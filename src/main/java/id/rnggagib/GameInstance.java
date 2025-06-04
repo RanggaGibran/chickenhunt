@@ -12,6 +12,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 
 import java.util.HashSet;
@@ -110,54 +111,136 @@ public class GameInstance {
                 activeChickens.remove(chickenId);
                 continue;
             }
+            
+            // Safety check: Force teleport back if somehow outside region
+            if (!region.isInRegion(chicken.getLocation())) {
+                Location safeLocation = findSafeLocationInRegion();
+                if (safeLocation != null) {
+                    chicken.teleport(safeLocation);
+                }
+                continue;
+            }
 
             // Cari pemain terdekat dalam radius DETECTION_RADIUS
             Player closestPlayer = null;
             double closestDistance = DETECTION_RADIUS;
 
             for (Player player : world.getPlayers()) {
-                if (player.getLocation().distance(chicken.getLocation()) < closestDistance) {
+                double distance = player.getLocation().distance(chicken.getLocation());
+                if (distance < closestDistance) {
                     closestPlayer = player;
-                    closestDistance = player.getLocation().distance(chicken.getLocation());
+                    closestDistance = distance;
                 }
             }
 
             if (closestPlayer != null) {
                 // Arahkan ayam menjauh dari pemain
-                Vector direction = chicken.getLocation().toVector().subtract(closestPlayer.getLocation().toVector()).normalize().multiply(CHICKEN_ESCAPE_SPEED);
+                Vector direction = chicken.getLocation().toVector()
+                        .subtract(closestPlayer.getLocation().toVector())
+                        .normalize()
+                        .multiply(CHICKEN_ESCAPE_SPEED);
                 
-                // Pastikan ayam tidak keluar dari region
-                Location predictedLocation = chicken.getLocation().clone().add(direction);
-                if (!region.isInRegion(predictedLocation)) {
-                    // Jika akan keluar region, balikkan arahnya
-                    direction.multiply(-0.5);
+                // Mengecek jarak ke batas region
+                Location chickenLoc = chicken.getLocation();
+                BoundingBox bounds = region.getBoundingBox();
+                double distanceToXMinBorder = chickenLoc.getX() - bounds.getMinX();
+                double distanceToXMaxBorder = bounds.getMaxX() - chickenLoc.getX();
+                double distanceToZMinBorder = chickenLoc.getZ() - bounds.getMinZ();
+                double distanceToZMaxBorder = bounds.getMaxZ() - chickenLoc.getZ();
+                
+                // Ubah arah jika terlalu dekat dengan batas (buffer 2 blok)
+                double borderBuffer = 2.0;
+                if (distanceToXMinBorder < borderBuffer && direction.getX() < 0) {
+                    direction.setX(direction.getX() * -0.5 + 0.1); // Mendorong sedikit ke arah positif X
+                }
+                if (distanceToXMaxBorder < borderBuffer && direction.getX() > 0) {
+                    direction.setX(direction.getX() * -0.5 - 0.1); // Mendorong sedikit ke arah negatif X
+                }
+                if (distanceToZMinBorder < borderBuffer && direction.getZ() < 0) {
+                    direction.setZ(direction.getZ() * -0.5 + 0.1); // Mendorong sedikit ke arah positif Z
+                }
+                if (distanceToZMaxBorder < borderBuffer && direction.getZ() > 0) {
+                    direction.setZ(direction.getZ() * -0.5 - 0.1); // Mendorong sedikit ke arah negatif Z
                 }
                 
-                chicken.setVelocity(direction);
-                
-                // Tambahkan particle efek panik untuk ayam yang dikejar
-                chicken.getWorld().spawnParticle(
-                    Particle.ANGRY_VILLAGER, 
-                    chicken.getLocation().add(0, 0.5, 0),
-                    1, 0.2, 0.2, 0.2, 0
-                );
+                // Pastikan ayam tidak keluar dari region dengan mengecek prediksi lokasi
+                Location predictedLocation = chicken.getLocation().clone().add(direction);
+                if (region.isInRegion(predictedLocation)) {
+                    chicken.setVelocity(direction);
+                    
+                    // Tambahkan particle efek panik untuk ayam yang dikejar
+                    chicken.getWorld().spawnParticle(
+                        Particle.HAPPY_VILLAGER, 
+                        chicken.getLocation().add(0, 0.5, 0),
+                        1, 0.2, 0.2, 0.2, 0
+                    );
+                } else {
+                    // Jika akan keluar region, balikkan arahnya
+                    chicken.setVelocity(direction.multiply(-0.8));
+                }
             } else {
                 // Jika tidak ada pemain dekat, gerakkan ayam secara random sesekali
                 if (Math.random() < 0.05) { // 5% kemungkinan bergerak random
-                    Random random = new Random();
+                    Random random = ThreadLocalRandom.current();
+                    
+                    // Gerakan di dalam region dengan mempertimbangkan posisi saat ini
+                    double currentX = chicken.getLocation().getX();
+                    double currentZ = chicken.getLocation().getZ();
+                    BoundingBox bounds = region.getBoundingBox();
+                    
+                    // Menentukan batas gerakan untuk menghindari mendekat ke tepi region
+                    double minX = Math.max(bounds.getMinX() + 2, currentX - 3);
+                    double maxX = Math.min(bounds.getMaxX() - 2, currentX + 3);
+                    double minZ = Math.max(bounds.getMinZ() + 2, currentZ - 3);
+                    double maxZ = Math.min(bounds.getMaxZ() - 2, currentZ + 3);
+                    
+                    // Hitung arah gerakan yang aman
+                    double targetX = minX + random.nextDouble() * (maxX - minX);
+                    double targetZ = minZ + random.nextDouble() * (maxZ - minZ);
+                    
                     Vector randomDirection = new Vector(
-                        random.nextDouble() * 0.4 - 0.2,
+                        (targetX - currentX) * 0.1,
                         0,
-                        random.nextDouble() * 0.4 - 0.2
+                        (targetZ - currentZ) * 0.1
                     );
                     
-                    Location predictedLocation = chicken.getLocation().clone().add(randomDirection);
-                    if (region.isInRegion(predictedLocation)) {
-                        chicken.setVelocity(randomDirection);
-                    }
+                    chicken.setVelocity(randomDirection);
                 }
             }
         }
+    }
+
+    // Tambahkan metode helper untuk mencari lokasi aman dalam region
+    private Location findSafeLocationInRegion() {
+        World world = Bukkit.getWorld(region.getWorldName());
+        if (world == null) return null;
+        
+        Random random = ThreadLocalRandom.current();
+        BoundingBox bounds = region.getBoundingBox();
+        
+        // Coba beberapa kali untuk menemukan lokasi yang aman
+        for (int attempt = 0; attempt < MAX_SPAWN_ATTEMPTS_PER_CHICKEN; attempt++) {
+            // Pilih posisi X,Z acak di region, tetapi hindari tepi
+            double safeOffset = 2.0;
+            double x = bounds.getMinX() + safeOffset + random.nextDouble() * (bounds.getWidthX() - 2 * safeOffset);
+            double z = bounds.getMinZ() + safeOffset + random.nextDouble() * (bounds.getWidthZ() - 2 * safeOffset);
+            
+            // Cari Y yang aman dengan menelusuri dari atas ke bawah
+            for (double y = bounds.getMaxY(); y >= bounds.getMinY(); y--) {
+                Location potentialLoc = new Location(world, x, y, z);
+                if (isSafeLocation(potentialLoc)) {
+                    return potentialLoc;
+                }
+            }
+        }
+        
+        // Jika tidak menemukan lokasi aman, gunakan titik tengah region
+        return new Location(
+            world,
+            bounds.getMinX() + bounds.getWidthX() / 2,
+            bounds.getMaxY() - 1,
+            bounds.getMinZ() + bounds.getWidthZ() / 2
+        );
     }
 
     private void spawnChickens(int count) {
