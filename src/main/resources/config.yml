@@ -1,0 +1,130 @@
+wand-item:
+  material: "BLAZE_ROD"
+  name: "&6ChickenHunt Wand"
+
+messages:
+  prefix: "&e[ChickenHunt] &r"
+  pos1_set: "&aPosition 1 set to: X: %x%, Y: %y%, Z: %z% (%world%)"
+  pos2_set: "&aPosition 2 set to: X: %x%, Y: %y%, Z: %z% (%world%)"
+  region_created: "&aRegion '%region%' created successfully!"
+  region_deleted: "&aRegion '%region%' deleted."
+  region_exists: "&cRegion '%region%' already exists."
+  region_not_found: "&cRegion '%region%' not found."
+  no_permission: "&cYou don't have permission to do that."
+  player_only_command: "&cThis command can only be run by a player."
+  wand_received: "&aYou have received the ChickenHunt Wand!"
+  plugin_reloaded: "&aChickenHunt configuration and regions reloaded."
+  wand_lore_pos1: "&7Left-click to set position 1"
+  wand_lore_pos2: "&7Right-click to set position 2"
+  
+  usage_create: "&cUsage: /ch create <regionName>" # Tambahkan ini jika belum ada
+  usage_delete: "&cUsage: /ch delete <regionName>" # Tambahkan ini jika belum ada
+  usage_start: "&cUsage: /ch start <regionName> [durationSeconds]"
+  usage_stop: "&cUsage: /ch stop <regionName>"
+  invalid_duration: "&cDuration must be a positive number."
+  invalid_duration_format: "&cInvalid duration format. Please use numbers."
+  game_already_started: "&cGame is already active in region '%region%'."
+  game_started: "&aGame started in region '%region%'!"
+  game_started_duration: "&aGame started in region '%region%' for %duration% seconds!"
+  game_not_started: "&cGame is not active in region '%region%'."
+  game_stopped_manual: "&aGame manually stopped in region '%region%'."
+  game_ended_timed: "&eGame in region '%region%' has ended due to time limit."
+  
+  chicken_caught: "&a+1 Kepala Ayam!"
+  chicken_cannot_damage: "&cKamu tidak bisa melukai ayam spesial ini!"
+  
+  sell_no_heads: "&eKamu tidak memiliki Kepala Ayam Spesial untuk dijual."
+  sell_success: "&aKamu berhasil menjual %amount% Kepala Ayam Spesial seharga %money%!"
+  sell_vault_not_found: "&cTidak dapat menjual kepala ayam, fitur ekonomi tidak aktif."
+
+  status_usage: "&cUsage: /ch status [namaRegion]"
+  status_no_active_games: "&eSaat ini tidak ada game ChickenHunt yang aktif."
+  status_header_all: "&6--- Status Game ChickenHunt Aktif ---"
+  status_header_region: "&6--- Status Game di Region %region% ---"
+  status_game_entry: "&e- Region: &f%region% &7(&f%time_left%&7)"
+  status_game_entry_indefinite: "&e- Region: &f%region% &7(Durasi Tidak Terbatas)"
+  status_region_not_found_or_inactive: "&cRegion '%region%' tidak ditemukan atau game tidak aktif di sana."
+  
+  help_header_player: "&6--- ChickenHunt Player Commands ---"
+  help_sell: "&e/ch sell &7- Menjual semua Kepala Ayam Spesial."
+  help_status: "&e/ch status [region] &7- Melihat status game."
+  help_top: "&e/ch top [caught|money] &7- Melihat papan peringkat."
+  help_player_command: "&e/ch help &7- Menampilkan bantuan ini."
+
+  leaderboard_header: "&6--- Papan Peringkat Teratas: %type% ---"
+  leaderboard_entry_caught: "&e#%rank%. &f%player% &7- &a%amount% ayam"
+  leaderboard_entry_money: "&e#%rank%. &f%player% &7- &a%amount%"
+  leaderboard_empty: "&ePapan peringkat untuk %type% masih kosong."
+  usage_top: "&cUsage: /ch top [caught|money]"
+  
+  unknown_command: "&cPerintah tidak dikenal. Gunakan /ch help."
+  select_positions_first: "&cKamu harus memilih dua posisi dengan wand terlebih dahulu."
+  positions_different_worlds: "&cKedua titik seleksi harus berada di dunia yang sama."
+  region_create_failed: "&cGagal membuat region '%region%'. Pastikan seleksi valid."
+  no_regions_yet: "&eBelum ada region yang dibuat."
+  region_list: "&6Region yang tersedia: &f%regions%"
+  chicken_head_no_place: "&cKepala ayam spesial ini tidak dapat diletakkan!"
+
+# Pengaturan Game
+game-settings:
+  initial-chickens-per-region: 5
+  max-chickens-per-region: 20
+  chicken-spawn-interval-seconds: 10 # Seberapa sering gelombang spawn baru muncul
+  chickens-per-spawn-wave: 1 # Berapa banyak ayam yang spawn per gelombang
+  chicken-name: "&6Ayam Spesial" # Nama ayam spesial
+
+  # Golden Chicken Settings
+  golden-chicken:
+    enabled: true
+    name: "&eAyam Emas"
+    spawn-chance: 0.15
+    reward-multiplier: 3
+    texture_value: "c414822a85c5e7073e207da133ce226859b0f74f238d584c3d3a42f223bb16bf"
+
+# Item Kepala Ayam
+chicken-head-item:
+  material: "PLAYER_HEAD" # atau material lain seperti GOLD_NUGGET
+  name: "&6Kepala Ayam Spesial"
+  lore:
+    - "&7Klik kanan ayam spesial untuk mendapatkannya!"
+    - "&7Jual ini dengan /ch sell"
+  # Jika material: PLAYER_HEAD, Anda bisa menambahkan nilai tekstur base64
+  # Contoh: (Ini adalah tekstur kepala ayam dari Minecraft-Heads.com)
+  texture_value: "c414822a85c5e7073e207da133ce226859b0f74f238d584c3d3a42f223bb16bf"
+  sell-price: 50.0 # Harga jual per kepala ayam jika Vault aktif
+
+# Pesan terkait interaksi ayam
+# (Bagian ini sudah digabungkan ke dalam messages di atas)
+# Pengaturan Leaderboard
+leaderboard:
+  top-limit: 10 # Jumlah pemain yang ditampilkan di /ch top
+
+# Pengaturan Efek
+effects:
+  catch_chicken:
+    enabled: true
+    sound:
+      name: "ENTITY_CHICKEN_HURT" # Nama Sound dari Spigot API (https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Sound.html)
+      volume: 1.0 # Float, 0.0 hingga 1.0+
+      pitch: 1.0  # Float, 0.5 hingga 2.0
+    particle:
+      name: "SMOKE_NORMAL" # Nama Particle dari Spigot API (https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Particle.html)
+      count: 10       # Jumlah partikel
+      offset_x: 0.2   # Sebaran partikel X
+      offset_y: 0.3   # Sebaran partikel Y
+      offset_z: 0.2   # Sebaran partikel Z
+      speed: 0.05     # Kecepatan partikel (extra)
+      # data: ""      # Data tambahan untuk partikel tertentu (misalnya REDSTONE: "255,0,0" untuk warna merah)
+
+# Pengaturan jadwal otomatis
+auto-scheduler:
+  enabled: true
+  regions: ["hunt1", "hunt2"]  # Daftar region yang akan dipilih secara acak
+  interval-minutes: 30         # Game dimulai setiap 30 menit
+  game-duration-minutes: 5     # Durasi game 5 menit
+  warning-seconds: 60          # Peringatan 60 detik sebelum game dimulai
+  announcement:
+    enabled: true
+    start-message: "&aGame ChickenHunt di region %region% akan dimulai dalam %seconds% detik!"
+    started-message: "&aGame ChickenHunt di region %region% telah dimulai untuk %minutes% menit!"
+    end-message: "&eGame ChickenHunt di region %region% telah berakhir!"

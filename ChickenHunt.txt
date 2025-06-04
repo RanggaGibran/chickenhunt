@@ -1,0 +1,131 @@
+Nama Plugin: ChickenHunt Versi Target Minecraft: 1.20.6+
+
+Konsep Dasar Permainan: Pemain mencari dan "menangkap" ayam spesial di dalam region yang telah ditentukan oleh admin. Ayam tidak bisa dipukul mati, melainkan di-klik kanan untuk mendapatkan item "Kepala Ayam" yang bisa dijual.
+
+Ide Fitur Tambahan:
+
+Leaderboard:
+
+Papan peringkat untuk pemain dengan "Kepala Ayam" terbanyak yang dikumpulkan atau dijual.
+Command: /ch top [collected|sold]
+Durasi Permainan Terbatas (Opsional):
+
+Admin bisa mengatur durasi permainan saat memulai.
+Contoh: /ch start <namaRegion> [durasiDalamDetik]
+Pemberitahuan sisa waktu.
+Pengaturan Spawn Ayam yang Lebih Detail:
+
+Konfigurasi jumlah maksimal ayam per region.
+Interval spawn ayam.
+Command: /ch config region <namaRegion> maxchickens <jumlah>
+Command: /ch config region <namaRegion> spawninterval <detik>
+Variasi Ayam Spesial:
+
+Misalnya, "Ayam Emas" yang langka, memberikan lebih banyak "Kepala Ayam" atau hadiah spesial lainnya.
+Efek Visual dan Suara:
+
+Partikel saat ayam "ditangkap".
+Suara khusus saat mendapatkan "Kepala Ayam".
+Partikel untuk menandai batas region aktif (opsional, bisa di-toggle).
+Hadiah yang Dapat Dikonfigurasi:
+
+Selain menjual kepala, mungkin ada hadiah langsung saat menangkap sejumlah ayam tertentu.
+Integrasi dengan plugin ekonomi (seperti Vault) untuk memberikan uang saat menjual.
+Manajemen Region Lebih Lanjut:
+
+Command: /ch list (untuk melihat semua region yang ada).
+Command: /ch delete <namaRegion> (untuk menghapus region).
+Command: /ch tp <namaRegion> (untuk teleport ke region, bagi admin).
+Command: /ch redefine <namaRegion> (untuk mengubah batas region yang sudah ada menggunakan wand).
+Notifikasi dan Pesan yang Dapat Disesuaikan:
+
+Semua pesan (mulai game, stop game, kepala didapat, kepala dijual, dll.) dapat diubah melalui file konfigurasi.
+Cooldown Pengambilan Ayam:
+
+Mencegah pemain mengambil banyak ayam secara instan jika berdekatan, dengan menambahkan cooldown singkat setelah mengambil satu ayam.
+Status Permainan:
+
+Command: /ch status [namaRegion] (untuk melihat status game di region tertentu atau semua region aktif).
+Persyaratan Pemain:
+
+Opsi untuk memulai game hanya jika ada jumlah pemain minimum di server atau di dalam region.
+Mode Auto-Start:
+
+Opsi untuk region tertentu agar game dimulai otomatis jika ada cukup pemain di dalamnya dan game sedang tidak aktif.
+Struktur Perintah Utama yang Diusulkan:
+
+Admin Commands:
+
+/ch wand
+Deskripsi: Memberikan item "wand" (misalnya Blaze Rod) kepada admin.
+Penggunaan: Klik kiri untuk posisi pertama, klik kanan untuk posisi kedua.
+Permission: chickenhunt.admin.wand
+/ch create <namaRegion>
+Deskripsi: Membuat region permainan baru berdasarkan seleksi wand.
+Permission: chickenhunt.admin.create
+/ch start <namaRegion> [durasiDetik]
+Deskripsi: Memulai permainan ChickenHunt di region yang ditentukan. Durasi opsional.
+Permission: chickenhunt.admin.start
+/ch stop <namaRegion>
+Deskripsi: Menghentikan permainan ChickenHunt di region yang ditentukan. Ayam akan hilang.
+Permission: chickenhunt.admin.stop
+/ch delete <namaRegion>
+Deskripsi: Menghapus region permainan.
+Permission: chickenhunt.admin.delete
+/ch list
+Deskripsi: Menampilkan daftar semua region yang telah dibuat.
+Permission: chickenhunt.admin.list
+/ch reload
+Deskripsi: Memuat ulang konfigurasi plugin.
+Permission: chickenhunt.admin.reload
+/ch config <parameter> [nilai] (Untuk pengaturan lanjutan)
+Permission: chickenhunt.admin.config
+Player Commands:
+
+/ch sell
+Deskripsi: Menjual semua "Kepala Ayam" yang dimiliki pemain.
+Permission: chickenhunt.player.sell
+/ch top [collected|sold]
+Deskripsi: Menampilkan papan peringkat.
+Permission: chickenhunt.player.top
+/ch help
+Deskripsi: Menampilkan bantuan perintah plugin.
+Permission: chickenhunt.player.help (atau tidak ada permission, bisa diakses semua)
+/ch status [namaRegion]
+Deskripsi: Melihat status permainan.
+Permission: chickenhunt.player.status
+Detail Item "Kepala Ayam":
+
+Nama Tampilan: "Kepala Ayam"
+Lore (opsional): Misal, "Kepala ayam spesial dari ChickenHunt!", "Jual ini untuk mendapatkan hadiah!"
+Texture: http://textures.minecraft.net/texture/fd82aae0b5a825f376bcfa1669e45855a7ca5c2c4cf751ad87d042ba1fb47a9e (Ini adalah nilai untuk custom player head).
+Mekanisme Inti:
+
+Pembuatan Region:
+
+Admin menggunakan /ch wand.
+Admin menandai dua titik diagonal untuk membentuk area kubus (region).
+Admin menggunakan /ch create <namaRegion> untuk menyimpan region ini. Data region (nama, dunia, koordinat min/max) disimpan (misalnya dalam file regions.yml).
+Memulai Permainan:
+
+Admin menggunakan /ch start <namaRegion>.
+Plugin menandai region tersebut sebagai "aktif".
+Ayam-ayam mulai muncul secara acak di dalam region tersebut. Jumlah ayam bisa dikonfigurasi.
+Ayam yang muncul adalah ayam normal, namun perilakunya diubah oleh plugin.
+Interaksi dengan Ayam:
+
+Ketika pemain mencoba memukul ayam (event EntityDamageByEntityEvent atau EntityDamageEvent) di region aktif, damage dibatalkan. Ayam tidak bisa mati karena pukulan.
+Ketika pemain mengklik kanan ayam (event PlayerInteractEntityEvent) di region aktif:
+Ayam tersebut hilang (entity.remove()).
+Pemain mendapatkan item "Kepala Ayam" yang sudah dikustomisasi.
+Efek suara dan partikel dimainkan.
+Pesan diberikan kepada pemain.
+Menjual Kepala Ayam:
+
+Pemain menggunakan /ch sell.
+Plugin memeriksa inventory pemain, menghitung jumlah "Kepala Ayam", menghapusnya, dan memberikan hadiah (misalnya uang jika Vault terintegrasi, atau item lain yang dikonfigurasi). Harga per kepala bisa diatur di config.yml.
+Menghentikan Permainan:
+
+Admin menggunakan /ch stop <namaRegion>.
+Region ditandai "tidak aktif".
+Semua ayam yang di-spawn oleh plugin di region tersebut akan dihapus.

@@ -1,0 +1,66 @@
+name: ChickenHunt
+main: id.rnggagib.ChickenHunt
+version: 1.0-SNAPSHOT
+api-version: 1.20
+author: RngGaGib
+description: A fun chicken hunting game plugin.
+
+commands:
+  ch:
+    description: Main command for ChickenHunt.
+    usage: /ch <subcommand> [args]
+    aliases: [chickenhunt]
+    permission: chickenhunt.use
+
+permissions:
+  chickenhunt.use:
+    description: Allows basic use of ChickenHunt commands.
+    default: true
+  chickenhunt.admin:
+    description: Allows access to all admin commands for ChickenHunt.
+    default: op
+    children:
+      chickenhunt.admin.wand: true
+      chickenhunt.admin.create: true
+      chickenhunt.admin.delete: true
+      chickenhunt.admin.list: true
+      chickenhunt.admin.start: true
+      chickenhunt.admin.stop: true
+      chickenhunt.admin.reload: true
+      chickenhunt.admin.config: true
+  chickenhunt.admin.wand:
+    description: Allows use of /ch wand.
+    default: op
+  chickenhunt.admin.create:
+    description: Allows use of /ch create.
+    default: op
+  chickenhunt.admin.delete:
+    description: Allows use of /ch delete.
+    default: op
+  chickenhunt.admin.list:
+    description: Allows use of /ch list.
+    default: op
+  chickenhunt.admin.start:
+    description: Allows use of /ch start.
+    default: op
+  chickenhunt.admin.stop:
+    description: Allows use of /ch stop.
+    default: op
+  chickenhunt.admin.reload:
+    description: Allows use of /ch reload.
+    default: op
+  chickenhunt.admin.config:
+    description: Allows use of /ch config.
+    default: op
+  chickenhunt.player.sell:
+    description: Allows use of /ch sell.
+    default: true
+  chickenhunt.player.top:
+    description: Allows use of /ch top.
+    default: true
+  chickenhunt.player.help:
+    description: Allows use of /ch help.
+    default: true
+  chickenhunt.player.status:
+    description: Allows use of /ch status.
+    default: true
