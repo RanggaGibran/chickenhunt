@@ -1,5 +1,6 @@
 package id.rnggagib;
 
+import org.bukkit.ChatColor;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -15,7 +16,6 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.ChatColor;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 
@@ -45,12 +45,37 @@ public class GameListener implements Listener {
         }
 
         Player player = event.getPlayer();
-        Chicken chicken = (Chicken) clickedEntity;
+        UUID playerId = player.getUniqueId();
+        
+        // Check cooldown
+        double cooldownSeconds = plugin.getConfig().getDouble("game-settings.catch-cooldown-seconds", 1.5);
+        long cooldownMillis = (long)(cooldownSeconds * 1000);
+        long currentTime = System.currentTimeMillis();
+        
+        if (playerCooldowns.containsKey(playerId)) {
+            long lastCatchTime = playerCooldowns.get(playerId);
+            long timeElapsed = currentTime - lastCatchTime;
+            
+            if (timeElapsed < cooldownMillis) {
+                // Cooldown masih aktif
+                double remainingSeconds = Math.ceil((cooldownMillis - timeElapsed) / 100.0) / 10.0; // Bulatkan ke 1 desimal
+                Map<String, String> placeholders = Map.of("seconds", String.format("%.1f", remainingSeconds));
+                String cooldownMessage = plugin.getRawMessage("cooldown_active", placeholders);
+                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(cooldownMessage));
+                event.setCancelled(true);
+                return;
+            }
+        }
 
+        Chicken chicken = (Chicken) clickedEntity;
         GameInstance gameInstance = plugin.getGameManager().getGameByChickenLocation(chicken.getLocation());
 
         if (gameInstance != null && gameInstance.isGameChicken(chicken)) {
             event.setCancelled(true);
+            
+            // Set cooldown timestamp
+            playerCooldowns.put(playerId, currentTime);
+            
             gameInstance.removeChicken(chicken);
 
             boolean isGolden = gameInstance.isGoldenChicken(chicken);
@@ -70,7 +95,7 @@ public class GameListener implements Listener {
             player.getInventory().addItem(headItem);
             player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(message));
             
-            int increment = isGolden ? 3 : 1; // Golden chickens count as 3 for stats
+            int increment = isGolden ? 3 : 1;
             plugin.getPlayerStatsManager().incrementChickensCaught(player.getUniqueId(), increment);
         }
     }

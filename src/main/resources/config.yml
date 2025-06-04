@@ -64,6 +64,7 @@ messages:
   no_regions_yet: "&eBelum ada region yang dibuat."
   region_list: "&6Region yang tersedia: &f%regions%"
   chicken_head_no_place: "&cKepala ayam spesial ini tidak dapat diletakkan!"
+  cooldown_active: "&cTunggu &f%seconds%s &cuntuk menangkap lagi!"
 
 # Pengaturan Game
 game-settings:
@@ -72,6 +73,7 @@ game-settings:
   chicken-spawn-interval-seconds: 10 # Seberapa sering gelombang spawn baru muncul
   chickens-per-spawn-wave: 1 # Berapa banyak ayam yang spawn per gelombang
   chicken-name: "&6Ayam Spesial" # Nama ayam spesial
+  catch-cooldown-seconds: 1.5  # Cooldown antara setiap tangkapan ayam
 
   # Golden Chicken Settings
   golden-chicken:
