@@ -4,6 +4,7 @@ version: 1.0-SNAPSHOT
 api-version: 1.20
 author: RngGaGib
 description: A fun chicken hunting game plugin.
+softdepend: [PlaceholderAPI, Vault]
 
 commands:
   ch:

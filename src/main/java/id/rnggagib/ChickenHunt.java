@@ -1,10 +1,10 @@
 package id.rnggagib;
 
-import net.milkbowl.vault.economy.Economy; // Import Vault
+import net.milkbowl.vault.economy.Economy;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.RegisteredServiceProvider; // Import Vault
+import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.HashMap;
@@ -17,12 +17,13 @@ public class ChickenHunt extends JavaPlugin {
   private RegionManager regionManager;
   private GameManager gameManager;
   private ItemManager itemManager;
-  private PlayerStatsManager playerStatsManager; // Tambahkan ini
+  private PlayerStatsManager playerStatsManager;
   private final Map<UUID, Location> playerSelectionsPos1 = new HashMap<>();
   private final Map<UUID, Location> playerSelectionsPos2 = new HashMap<>();
   private String prefix;
-  private static Economy econ = null; // Field untuk Vault Economy
+  private static Economy econ = null;
   private GameScheduler gameScheduler;
+  private ChickenHuntExpansion placeholderExpansion;
 
   @Override
   public void onEnable() {
@@ -33,12 +34,11 @@ public class ChickenHunt extends JavaPlugin {
     this.regionManager = new RegionManager(this);
     this.gameManager = new GameManager(this);
     this.itemManager = new ItemManager(this);
-    this.playerStatsManager = new PlayerStatsManager(this); // Inisialisasi
+    this.playerStatsManager = new PlayerStatsManager(this);
     this.gameScheduler = new GameScheduler(this);
 
     if (!setupEconomy()) {
         LOGGER.info("Vault not found or no economy plugin hooked. Chicken head selling will not provide money.");
-        // Plugin tetap berjalan, hanya fitur ekonomi yang mungkin tidak berfungsi penuh.
     } else {
         LOGGER.info("Successfully hooked into Vault for economy features.");
     }
@@ -50,16 +50,25 @@ public class ChickenHunt extends JavaPlugin {
     getServer().getPluginManager().registerEvents(new WandListener(this), this);
     getServer().getPluginManager().registerEvents(new GameListener(this), this);
 
-    // Jadwalkan task untuk efek visual ayam emas
     getServer().getScheduler().scheduleSyncRepeatingTask(this, () -> {
         for (GameInstance game : gameManager.getActiveGames().values()) {
-            // Logic untuk efek partikel pada ayam emas disini jika diperlukan
+            // Logic untuk efek partikel pada ayam emas jika diperlukan
         }
-    }, 20L, 20L); // Jalankan setiap detik
+    }, 20L, 20L);
 
     if (getConfig().getBoolean("auto-scheduler.enabled", false)) {
         this.gameScheduler.start();
         LOGGER.info("Auto-scheduler has been enabled. Games will start automatically according to schedule.");
+    }
+    
+    // Daftarkan ekspansi PlaceholderAPI jika tersedia
+    if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
+        this.placeholderExpansion = new ChickenHuntExpansion(this);
+        if (this.placeholderExpansion.register()) {
+            LOGGER.info("Successfully registered PlaceholderAPI expansion.");
+        } else {
+            LOGGER.warning("Failed to register PlaceholderAPI expansion.");
+        }
     }
 
     LOGGER.info("ChickenHunt has been enabled successfully!");
@@ -76,9 +85,15 @@ public class ChickenHunt extends JavaPlugin {
     if (this.regionManager != null) {
         this.regionManager.saveRegions();
     }
-    if (this.playerStatsManager != null) { // Simpan statistik saat disable
+    if (this.playerStatsManager != null) {
         this.playerStatsManager.saveStats();
     }
+    
+    // Unregister PlaceholderAPI expansion
+    if (this.placeholderExpansion != null) {
+        this.placeholderExpansion.unregister();
+    }
+    
     LOGGER.info("ChickenHunt has been disabled.");
   }
 
