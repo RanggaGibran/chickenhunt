@@ -64,3 +64,6 @@ permissions:
   chickenhunt.player.status:
     description: Allows use of /ch status.
     default: true
+  chickenhunt.player.rewards:
+    description: Allows use of /ch rewards.
+    default: true

@@ -84,6 +84,8 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                 return true;
             case "schedule":
                 return handleScheduleCommand(sender);
+            case "rewards":
+                return handleRewardsCommand(sender);
             default:
                 sender.sendMessage(getMsg("unknown_command", null));
                 return true;
@@ -438,9 +440,14 @@ public class CommandManager implements CommandExecutor, TabCompleter {
             sender.sendMessage(ChatColor.YELLOW + "/ch help" + ChatColor.GRAY + " - Shows this help message.");
         } else if (sender.hasPermission("chickenhunt.player.help") || sender.hasPermission("chickenhunt.use")) { 
             sender.sendMessage(getRawMsg("help_header_player", null));
-            if (sender.hasPermission("chickenhunt.player.sell")) sender.sendMessage(getRawMsg("help_sell", null));
-            if (sender.hasPermission("chickenhunt.player.status")) sender.sendMessage(getRawMsg("help_status", null));
-            if (sender.hasPermission("chickenhunt.player.top")) sender.sendMessage(getRawMsg("help_top", null)); // Pastikan baris ini tidak dikomentari
+            if (sender.hasPermission("chickenhunt.player.sell")) 
+                sender.sendMessage(getRawMsg("help_sell", null));
+            if (sender.hasPermission("chickenhunt.player.status")) 
+                sender.sendMessage(getRawMsg("help_status", null));
+            if (sender.hasPermission("chickenhunt.player.top")) 
+                sender.sendMessage(getRawMsg("help_top", null));
+            if (sender.hasPermission("chickenhunt.player.rewards")) 
+                sender.sendMessage(ChatColor.YELLOW + "/ch rewards " + ChatColor.GRAY + "- Lihat progress dan hadiah yang tersedia.");
             sender.sendMessage(getRawMsg("help_player_command", null));
         } else {
             sender.sendMessage(getMsg("no_permission", null));
@@ -510,4 +517,55 @@ public class CommandManager implements CommandExecutor, TabCompleter {
         
         return true;
     }
+
+    private boolean handleRewardsCommand(CommandSender sender) {
+    if (!(sender instanceof Player)) {
+        sender.sendMessage(getMsg("player_only_command", null));
+        return true;
+    }
+    
+    Player player = (Player) sender;
+    if (!player.hasPermission("chickenhunt.player.rewards")) {
+        player.sendMessage(getMsg("no_permission", null));
+        return true;
+    }
+    
+    UUID playerId = player.getUniqueId();
+    int chickensCaught = plugin.getPlayerStatsManager().getChickensCaught(playerId);
+    Set<Integer> rewardsReceived = plugin.getPlayerStatsManager().getRewardsReceived(playerId);
+    
+    player.sendMessage(ChatColor.GOLD + "--- ChickenHunt Rewards ---");
+    player.sendMessage(ChatColor.YELLOW + "Total chickens caught: " + ChatColor.WHITE + chickensCaught);
+    
+    List<?> tiers = plugin.getConfig().getList("rewards.tier-rewards.tiers");
+    if (tiers == null || tiers.isEmpty()) {
+        player.sendMessage(ChatColor.RED + "No rewards configured.");
+        return true;
+    }
+    
+    player.sendMessage(ChatColor.YELLOW + "Your rewards:");
+    
+    tiers.stream()
+        .filter(tierObj -> tierObj instanceof Map)
+        .map(tierObj -> (Map<?, ?>) tierObj)
+        .filter(tier -> tier.get("count") instanceof Integer)
+        .forEach(tier -> {
+            Integer count = (Integer) tier.get("count");
+            boolean received = rewardsReceived.contains(count);
+            boolean eligible = chickensCaught >= count;
+            
+            String status;
+            if (received) {
+                status = ChatColor.GREEN + "✓ CLAIMED";
+            } else if (eligible) {
+                status = ChatColor.GOLD + "! AVAILABLE (Rejoin to claim)";
+            } else {
+                status = ChatColor.RED + "✗ LOCKED (" + (count - chickensCaught) + " more needed)";
+            }
+            
+            player.sendMessage(ChatColor.YELLOW + " • " + ChatColor.WHITE + count + " chickens: " + status);
+        });
+    
+    return true;
+}
 }

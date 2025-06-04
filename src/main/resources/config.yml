@@ -128,3 +128,27 @@ auto-scheduler:
     start-message: "&aGame ChickenHunt di region %region% akan dimulai dalam %seconds% detik!"
     started-message: "&aGame ChickenHunt di region %region% telah dimulai untuk %minutes% menit!"
     end-message: "&eGame ChickenHunt di region %region% telah berakhir!"
+
+# Sistem Reward Bertingkat
+rewards:
+  tier-rewards:
+    enabled: true
+    message: "&a&lSELAMAT! &eKamu telah mendapatkan hadiah untuk menangkap &6%count% &eayam!"
+    tiers:
+      - count: 10
+        commands:
+          - "give %player% minecraft:diamond 1"
+          - "title %player% subtitle \"&eDiberikan 1 Diamond\""
+      - count: 25
+        commands:
+          - "give %player% minecraft:emerald 3"
+          - "title %player% subtitle \"&eDiberikan 3 Emerald\""
+      - count: 50
+        commands:
+          - "give %player% minecraft:netherite_ingot 1"
+          - "title %player% subtitle \"&eDiberikan 1 Netherite Ingot\""
+      - count: 100
+        commands:
+          - "give %player% minecraft:diamond_block 1"
+          - "give %player% minecraft:emerald_block 1"
+          - "broadcast &6%player% &etelah menjadi pemburu legendaris dengan 100 tangkapan ayam!"
