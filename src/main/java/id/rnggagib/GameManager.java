@@ -1,20 +1,27 @@
 package id.rnggagib;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location; // Import Location
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 public class GameManager {
     private final ChickenHunt plugin;
     private final Map<String, GameInstance> activeGames = new HashMap<>();
+    private final Map<String, BukkitTask> countdownTasks = new HashMap<>();
+    private ScoreboardHandler scoreboardHandler;
 
     public GameManager(ChickenHunt plugin) {
         this.plugin = plugin;
+        this.scoreboardHandler = new ScoreboardHandler(plugin);
     }
 
     public boolean startGame(String regionName, int durationSeconds, CommandSender starter) {
@@ -29,20 +36,76 @@ public class GameManager {
             return false;
         }
 
-        GameInstance gameInstance = new GameInstance(plugin, this, region, durationSeconds);
-        activeGames.put(regionName.toLowerCase(), gameInstance);
-        gameInstance.start();
-        if (starter != null) {
-             Map<String, String> placeholders = new HashMap<>();
-             placeholders.put("region", regionName);
-             if (durationSeconds > 0) {
-                 placeholders.put("duration", String.valueOf(durationSeconds));
-                 starter.sendMessage(plugin.getMessage("game_started_duration", placeholders));
-             } else {
-                 starter.sendMessage(plugin.getMessage("game_started", placeholders));
-             }
+        // Implement countdown before starting the game
+        int countdownSeconds = plugin.getConfig().getInt("game-settings.countdown-seconds", 10);
+        
+        // Cancel any existing countdown for this region
+        if (countdownTasks.containsKey(regionName.toLowerCase())) {
+            countdownTasks.get(regionName.toLowerCase()).cancel();
         }
-        // Announce to players in region or globally if configured
+        
+        // Start the countdown
+        BukkitTask countdownTask = new BukkitRunnable() {
+            int secondsLeft = countdownSeconds;
+            
+            @Override
+            public void run() {
+                if (secondsLeft <= 0) {
+                    // Time to start the game
+                    GameInstance gameInstance = new GameInstance(plugin, GameManager.this, region, durationSeconds, scoreboardHandler);
+                    activeGames.put(regionName.toLowerCase(), gameInstance);
+                    gameInstance.start();
+                    
+                    // Display start message
+                    if (starter != null) {
+                        Map<String, String> placeholders = new HashMap<>();
+                        placeholders.put("region", regionName);
+                        if (durationSeconds > 0) {
+                            placeholders.put("duration", String.valueOf(durationSeconds));
+                            starter.sendMessage(plugin.getMessage("game_started_duration", placeholders));
+                        } else {
+                            starter.sendMessage(plugin.getMessage("game_started", placeholders));
+                        }
+                    }
+                    
+                    // Create scoreboards for all players in the region
+                    for (Player player : Bukkit.getOnlinePlayers()) {
+                        if (region.isInRegion(player.getLocation())) {
+                            scoreboardHandler.createScoreboard(player, gameInstance);
+                        }
+                    }
+                    
+                    // Cancel this task
+                    this.cancel();
+                    countdownTasks.remove(regionName.toLowerCase());
+                } else if (secondsLeft <= 5 || secondsLeft % 5 == 0) {
+                    // Announce countdown at intervals
+                    Map<String, String> placeholders = Map.of(
+                        "region", regionName,
+                        "seconds", String.valueOf(secondsLeft)
+                    );
+                    
+                    // Broadcast to all players or just those in the region
+                    String countdownMessage = plugin.getRawMessage("game_countdown", placeholders);
+                    for (Player player : Bukkit.getOnlinePlayers()) {
+                        if (region.isInRegion(player.getLocation())) {
+                            player.sendMessage(countdownMessage);
+                        }
+                    }
+                }
+                
+                secondsLeft--;
+            }
+        }.runTaskTimer(plugin, 0L, 20L); // Run every second
+        
+        countdownTasks.put(regionName.toLowerCase(), countdownTask);
+        
+        // Inform about the countdown (only if not an admin doing /ch start)
+        if (starter != null && starter instanceof Player) {
+            // Don't send the initial countdown message to avoid duplication
+            // The first countdown message will be sent by the runnable
+        }
+        
         return true;
     }
 
@@ -62,13 +125,15 @@ public class GameManager {
             return false;
         }
 
+        // Remove all scoreboards for players in the region
+        scoreboardHandler.removeAllScoreboards();
+
         gameInstance.stop(timedOut);
         Map<String, String> placeholders = Map.of("region", regionName);
         if (stopper != null) { // Manual stop by command
              stopper.sendMessage(plugin.getMessage("game_stopped_manual", placeholders));
         } else if (timedOut) { // Game ended due to time
             // Could send a different message or broadcast
-            plugin.getLogger().info(plugin.getRawMessage("game_ended_timed", placeholders));
             // Example: Bukkit.broadcastMessage(plugin.getMessage("game_ended_timed_broadcast", placeholders));
         }
         return true;
@@ -99,6 +164,5 @@ public class GameManager {
         for (String regionName : new HashMap<>(activeGames).keySet()) { // Iterate over a copy of keys
             stopGame(regionName, false, null); // false for not timed out, null for no specific stopper
         }
-        plugin.getLogger().info("All ChickenHunt games stopped.");
     }
 }

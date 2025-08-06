@@ -2,7 +2,6 @@ package id.rnggagib;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
@@ -16,7 +15,6 @@ import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
@@ -27,25 +25,35 @@ public class GameInstance {
     private final Region region;
     private final int durationSeconds;
     private final GameManager gameManager;
+    private final ScoreboardHandler scoreboardHandler;
 
     private final Set<UUID> activeChickens = new HashSet<>();
     private BukkitTask gameTimerTask;
     private BukkitTask chickenSpawnerTask;
     private BukkitTask chickenAITask;
+    private BukkitTask scoreboardUpdateTask;
     private int remainingSeconds;
 
     public static final String CHICKEN_METADATA_KEY = "ChickenHuntChicken";
     public static final String GOLDEN_CHICKEN_METADATA_KEY = "ChickenHuntGoldenChicken";
     private static final int MAX_SPAWN_ATTEMPTS_PER_CHICKEN = 10;
-    private static final double CHICKEN_ESCAPE_SPEED = 0.6;
-    private static final double DETECTION_RADIUS = 8.0;
+    private static final double CHICKEN_ESCAPE_SPEED = 0.4;  // Base escape speed 
+    private static final double DETECTION_RADIUS = 10.0;  // Detection radius
+    private static final double PANIC_RADIUS = 5.0;  // Chicken panics when player is this close
+    private static final double EXTREME_PANIC_RADIUS = 2.5;  // Extreme panic mode when player is very close
 
-    public GameInstance(ChickenHunt plugin, GameManager gameManager, Region region, int durationSeconds) {
+    public GameInstance(ChickenHunt plugin, GameManager gameManager, Region region, int durationSeconds, ScoreboardHandler scoreboardHandler) {
         this.plugin = plugin;
         this.gameManager = gameManager;
         this.region = region;
-        this.durationSeconds = durationSeconds;
-        this.remainingSeconds = durationSeconds;
+        
+        // Set the duration based on input or config default
+        int defaultDuration = plugin.getConfig().getInt("game-settings.default-duration-seconds", 300);
+        this.durationSeconds = durationSeconds > 0 ? durationSeconds : defaultDuration;
+        
+        // Initialize remaining seconds to the same value as duration
+        this.remainingSeconds = this.durationSeconds;
+        this.scoreboardHandler = scoreboardHandler;
     }
 
     public void start() {
@@ -71,15 +79,47 @@ public class GameInstance {
                 @Override
                 public void run() {
                     remainingSeconds--;
+                    
+                    // Update scoreboards every second with new time
+                    updateScoreboards();
+                    
                     if (remainingSeconds <= 0) {
-                        plugin.getLogger().info("Game in region " + region.getName() + " ended due to time limit.");
                         gameManager.stopGame(region.getName(), true);
                         this.cancel();
                     }
                 }
             }.runTaskTimer(plugin, 20L, 20L);
+        } else {
+            // If no duration, still update scoreboards periodically
+            gameTimerTask = new BukkitRunnable() {
+                @Override
+                public void run() {
+                    // Just update scoreboards without counting down
+                    updateScoreboards();
+                }
+            }.runTaskTimer(plugin, 20L, 20L);
         }
-        plugin.getLogger().info("Game started in region: " + region.getName());
+        
+        // Also update scoreboards every few seconds to refresh player points data
+        scoreboardUpdateTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                updateScoreboards();
+            }
+        }.runTaskTimer(plugin, 100L, 100L); // Update every 5 seconds
+    }
+
+    private void updateScoreboards() {
+        // Get all players in the region
+        World world = Bukkit.getWorld(region.getWorldName());
+        if (world == null) return;
+        
+        for (Player player : world.getPlayers()) {
+            if (region.isInRegion(player.getLocation())) {
+                // Update scoreboard with remaining time and player points
+                scoreboardHandler.updateScoreboard(player, this);
+            }
+        }
     }
 
     public void stop(boolean timedOut) {
@@ -95,10 +135,11 @@ public class GameInstance {
             chickenAITask.cancel();
             chickenAITask = null;
         }
-        removeAllChickens();
-        if (!timedOut) {
-            plugin.getLogger().info("Game stopped in region: " + region.getName());
+        if (scoreboardUpdateTask != null) {
+            scoreboardUpdateTask.cancel();
+            scoreboardUpdateTask = null;
         }
+        removeAllChickens();
     }
 
     private void updateChickenAI() {
@@ -121,90 +162,154 @@ public class GameInstance {
                 continue;
             }
 
-            // Cari pemain terdekat dalam radius DETECTION_RADIUS
+            // Always keep the natural AI enabled for natural movement
+            chicken.setAI(true);
+            
+            // Find the closest player
             Player closestPlayer = null;
-            double closestDistance = DETECTION_RADIUS;
-
+            double closestDistance = Double.MAX_VALUE;
+            
             for (Player player : world.getPlayers()) {
+                if (!region.isInRegion(player.getLocation())) continue;
+                
                 double distance = player.getLocation().distance(chicken.getLocation());
                 if (distance < closestDistance) {
                     closestPlayer = player;
                     closestDistance = distance;
                 }
             }
-
-            if (closestPlayer != null) {
-                // Arahkan ayam menjauh dari pemain
+            
+            // Is this a golden chicken?
+            boolean isGolden = chicken.hasMetadata(GOLDEN_CHICKEN_METADATA_KEY);
+            
+            // Only influence movement if player is within detection radius
+            if (closestPlayer != null && closestDistance < DETECTION_RADIUS) {
+                // Calculate the escape vector (away from player)
                 Vector direction = chicken.getLocation().toVector()
-                        .subtract(closestPlayer.getLocation().toVector())
-                        .normalize()
-                        .multiply(CHICKEN_ESCAPE_SPEED);
+                                  .subtract(closestPlayer.getLocation().toVector())
+                                  .normalize();
                 
-                // Mengecek jarak ke batas region
-                Location chickenLoc = chicken.getLocation();
+                // Determine the level of panic
+                double speed = CHICKEN_ESCAPE_SPEED;
+                boolean isPanic = closestDistance < PANIC_RADIUS;
+                boolean isExtremePanic = closestDistance < EXTREME_PANIC_RADIUS;
+                
+                // Adjust speed based on panic level (use lighter speed values to preserve natural movement)
+                if (isExtremePanic) {
+                    speed *= 1.8;
+                } else if (isPanic) {
+                    speed *= 1.3;
+                } else {
+                    // Minimal influence at the edge of detection radius
+                    speed *= 0.7; 
+                }
+                
+                // Golden chickens are faster
+                if (isGolden) {
+                    speed *= 1.3;
+                }
+                
+                // Make sure Y velocity is reasonable
+                direction.setY(Math.max(-0.1, Math.min(0.1, direction.getY())));
+                
+                // Add some randomness to movement for more natural look
+                if (Math.random() < 0.4) { // 40% chance of randomness
+                    Random random = ThreadLocalRandom.current();
+                    direction.add(new Vector(
+                        (random.nextDouble() - 0.5) * 0.15,
+                        0,
+                        (random.nextDouble() - 0.5) * 0.15
+                    ));
+                }
+                
+                // Check region boundaries
                 BoundingBox bounds = region.getBoundingBox();
+                Location chickenLoc = chicken.getLocation();
                 double distanceToXMinBorder = chickenLoc.getX() - bounds.getMinX();
                 double distanceToXMaxBorder = bounds.getMaxX() - chickenLoc.getX();
                 double distanceToZMinBorder = chickenLoc.getZ() - bounds.getMinZ();
                 double distanceToZMaxBorder = bounds.getMaxZ() - chickenLoc.getZ();
                 
-                // Ubah arah jika terlalu dekat dengan batas (buffer 2 blok)
-                double borderBuffer = 2.0;
+                // Adjust direction if too close to boundaries (buffer 2.5 blocks)
+                double borderBuffer = 2.5;
                 if (distanceToXMinBorder < borderBuffer && direction.getX() < 0) {
-                    direction.setX(direction.getX() * -0.5 + 0.1); // Mendorong sedikit ke arah positif X
+                    direction.setX(direction.getX() * -0.8 + 0.2); // Redirect away from border
                 }
                 if (distanceToXMaxBorder < borderBuffer && direction.getX() > 0) {
-                    direction.setX(direction.getX() * -0.5 - 0.1); // Mendorong sedikit ke arah negatif X
+                    direction.setX(direction.getX() * -0.8 - 0.2);
                 }
                 if (distanceToZMinBorder < borderBuffer && direction.getZ() < 0) {
-                    direction.setZ(direction.getZ() * -0.5 + 0.1); // Mendorong sedikit ke arah positif Z
+                    direction.setZ(direction.getZ() * -0.8 + 0.2);
                 }
                 if (distanceToZMaxBorder < borderBuffer && direction.getZ() > 0) {
-                    direction.setZ(direction.getZ() * -0.5 - 0.1); // Mendorong sedikit ke arah negatif Z
+                    direction.setZ(direction.getZ() * -0.8 - 0.2);
                 }
                 
-                // Pastikan ayam tidak keluar dari region dengan mengecek prediksi lokasi
-                Location predictedLocation = chicken.getLocation().clone().add(direction);
-                if (region.isInRegion(predictedLocation)) {
-                    chicken.setVelocity(direction);
-                    
-                    // Tambahkan particle efek panik untuk ayam yang dikejar
+                // Apply appropriate velocity to flee
+                direction.multiply(speed);
+                
+                // Apply velocity but keep it gentle to work with natural movement
+                Vector currentVelocity = chicken.getVelocity();
+                
+                // Calculate a blend of current and escape velocities
+                // This makes the movement more natural by preserving some of the chicken's existing motion
+                Vector newVelocity = currentVelocity.clone().multiply(0.3).add(direction.multiply(0.7));
+                
+                // Apply a small upward component if on ground for more natural jumping motion
+                if (chicken.isOnGround() && Math.random() < 0.4) {
+                    newVelocity.setY(Math.max(0.1, newVelocity.getY()));
+                }
+                
+                chicken.setVelocity(newVelocity);
+                
+                // Add visual effects based on panic level
+                if (isExtremePanic) {
+                    // Extreme panic effect
+                    Particle effect = isGolden ? Particle.FLAME : Particle.CLOUD;
                     chicken.getWorld().spawnParticle(
-                        Particle.HAPPY_VILLAGER, 
+                        effect,
+                        chicken.getLocation().add(0, 0.5, 0),
+                        5, 0.3, 0.3, 0.3, 0.05
+                    );
+                    
+                    // Occasional panic sound
+                    if (Math.random() < 0.3) {
+                        chicken.getWorld().playSound(
+                            chicken.getLocation(),
+                            org.bukkit.Sound.ENTITY_CHICKEN_HURT,
+                            0.5f, 1.2f
+                        );
+                    }
+                } else if (isPanic) {
+                    // Regular panic effect
+                    Particle effect = isGolden ? Particle.FLAME : Particle.CLOUD;
+                    chicken.getWorld().spawnParticle(
+                        effect,
+                        chicken.getLocation().add(0, 0.5, 0),
+                        2, 0.2, 0.2, 0.2, 0.02
+                    );
+                }
+            } else {
+                // No players nearby - let Minecraft's AI handle natural movement
+                
+                // Occasionally add a small random velocity for more natural movement
+                if (Math.random() < 0.05) { // 5% chance per update
+                    Random random = ThreadLocalRandom.current();
+                    Vector smallRandom = new Vector(
+                        (random.nextDouble() - 0.5) * 0.1,
+                        0,
+                        (random.nextDouble() - 0.5) * 0.1
+                    );
+                    chicken.setVelocity(chicken.getVelocity().add(smallRandom));
+                }
+                
+                // Occasional ambient effects for golden chickens
+                if (isGolden && Math.random() < 0.05) {
+                    chicken.getWorld().spawnParticle(
+                        Particle.FLAME,
                         chicken.getLocation().add(0, 0.5, 0),
                         1, 0.2, 0.2, 0.2, 0
                     );
-                } else {
-                    // Jika akan keluar region, balikkan arahnya
-                    chicken.setVelocity(direction.multiply(-0.8));
-                }
-            } else {
-                // Jika tidak ada pemain dekat, gerakkan ayam secara random sesekali
-                if (Math.random() < 0.05) { // 5% kemungkinan bergerak random
-                    Random random = ThreadLocalRandom.current();
-                    
-                    // Gerakan di dalam region dengan mempertimbangkan posisi saat ini
-                    double currentX = chicken.getLocation().getX();
-                    double currentZ = chicken.getLocation().getZ();
-                    BoundingBox bounds = region.getBoundingBox();
-                    
-                    // Menentukan batas gerakan untuk menghindari mendekat ke tepi region
-                    double minX = Math.max(bounds.getMinX() + 2, currentX - 3);
-                    double maxX = Math.min(bounds.getMaxX() - 2, currentX + 3);
-                    double minZ = Math.max(bounds.getMinZ() + 2, currentZ - 3);
-                    double maxZ = Math.min(bounds.getMaxZ() - 2, currentZ + 3);
-                    
-                    // Hitung arah gerakan yang aman
-                    double targetX = minX + random.nextDouble() * (maxX - minX);
-                    double targetZ = minZ + random.nextDouble() * (maxZ - minZ);
-                    
-                    Vector randomDirection = new Vector(
-                        (targetX - currentX) * 0.1,
-                        0,
-                        (targetZ - currentZ) * 0.1
-                    );
-                    
-                    chicken.setVelocity(randomDirection);
                 }
             }
         }
@@ -246,7 +351,6 @@ public class GameInstance {
     private void spawnChickens(int count) {
         World world = Bukkit.getWorld(region.getWorldName());
         if (world == null) {
-            plugin.getLogger().warning("World " + region.getWorldName() + " not found for region " + region.getName());
             return;
         }
 
@@ -286,20 +390,59 @@ public class GameInstance {
             
             Chicken chicken = (Chicken) world.spawnEntity(spawnLoc, EntityType.CHICKEN);
             chicken.setMetadata(CHICKEN_METADATA_KEY, new FixedMetadataValue(plugin, true));
+            chicken.setAI(true); // Ensure AI is enabled from the start
             
             if (isGolden) {
                 String goldenChickenName = plugin.getConfig().getString("game-settings.golden-chicken.name", "&eAyam Emas");
                 chicken.setCustomName(ChatColor.translateAlternateColorCodes('&', goldenChickenName));
                 chicken.setMetadata(GOLDEN_CHICKEN_METADATA_KEY, new FixedMetadataValue(plugin, true));
                 
-                // Spawn particles around golden chicken to make it stand out
+                // Make golden chickens more noticeable with distinct effects
+                chicken.setGlowing(true); // Add glow effect if supported by server version
+                
+                // Spawn impressive particles around golden chicken to make it stand out
                 chicken.getWorld().spawnParticle(
-                    Particle.BLOCK,
+                    Particle.FLAME,
                     chicken.getLocation().add(0, 0.5, 0),
-                    10,
-                    0.3, 0.3, 0.3, 0.05,
-                    org.bukkit.Material.GOLD_BLOCK.createBlockData()
+                    15, 0.3, 0.3, 0.3, 0.05
                 );
+                
+                chicken.getWorld().spawnParticle(
+                    Particle.TOTEM_OF_UNDYING,
+                    chicken.getLocation().add(0, 0.5, 0),
+                    10, 0.3, 0.3, 0.3, 0.02
+                );
+                
+                // Play sound for nearby players
+                chicken.getWorld().playSound(
+                    chicken.getLocation(),
+                    org.bukkit.Sound.ENTITY_PLAYER_LEVELUP,
+                    0.5f,
+                    1.5f
+                );
+                
+                // Schedule repeated golden particle effects
+                new BukkitRunnable() {
+                    int count = 0;
+                    @Override
+                    public void run() {
+                        // Check if chicken still exists and is golden
+                        if (!chicken.isValid() || !chicken.hasMetadata(GOLDEN_CHICKEN_METADATA_KEY) || count > 100) {
+                            this.cancel();
+                            return;
+                        }
+                        
+                        // Gold sparkles effect
+                        if (count % 3 == 0) { // Every 3 ticks (faster particles)
+                            chicken.getWorld().spawnParticle(
+                                Particle.FLAME, 
+                                chicken.getLocation().add(0, 0.7, 0),
+                                2, 0.2, 0.2, 0.2, 0
+                            );
+                        }
+                        count++;
+                    }
+                }.runTaskTimer(plugin, 0L, 5L); // Run every 5 ticks (4 times per second)
             } else {
                 String chickenName = plugin.getConfig().getString("game-settings.chicken-name", "&6Special Chicken");
                 chicken.setCustomName(ChatColor.translateAlternateColorCodes('&', chickenName));
@@ -307,26 +450,8 @@ public class GameInstance {
             
             chicken.setCustomNameVisible(true);
             activeChickens.add(chicken.getUniqueId());
-            
-            // Add additional visual effects for golden chicken
-            if (isGolden) {
-                // Schedule particle effect task that repeats
-                new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        // Check if chicken still exists and is golden
-                        if (!chicken.isValid() || !chicken.hasMetadata(GOLDEN_CHICKEN_METADATA_KEY)) {
-                            return;
-                        }
-                        // Gold sparkles effect
-                        chicken.getWorld().spawnParticle(Particle.ENTITY_EFFECT, chicken.getLocation().add(0, 0.7, 0), 
-                                10, 0.2, 0.2, 0.2, 0, org.bukkit.Color.YELLOW);
-                    }
-                }.runTaskTimer(plugin, 0L, 20L); // Run every second
-            }
-            }
         }
-    
+    }
 
     private boolean isSafeLocation(Location loc) {
         if (!region.isInRegion(loc)) { // Ensure it's still within the defined X, Y, Z of the region

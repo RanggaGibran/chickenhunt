@@ -73,8 +73,8 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                 return handleStartCommand(sender, args);
             case "stop":
                 return handleStopCommand(sender, args);
-            case "sell": // Tambahkan case "sell"
-                return handleSellCommand(sender);
+            case "points": // Show player points
+                return handlePointsCommand(sender, args);
             case "status": // Tambahkan case "status"
                 return handleStatusCommand(sender, args);
             case "top": // Tambahkan case "top"
@@ -256,74 +256,123 @@ public class CommandManager implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    private boolean handleSellCommand(CommandSender sender) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(getMsg("player_only_command", null));
-            return true;
-        }
-        Player player = (Player) sender;
-        if (!player.hasPermission("chickenhunt.player.sell")) {
-            player.sendMessage(getMsg("no_permission", null));
-            return true;
-        }
-
-        PlayerInventory inventory = player.getInventory();
-        int headsSold = 0;
-        int goldenHeadsSold = 0;
-        double moneyEarned = 0.0;
-        double pricePerHead = plugin.getConfig().getDouble("chicken-head-item.sell-price", 50.0);
-        double pricePerGoldenHead = pricePerHead * 3; // Golden heads worth 3x
-
-        for (int i = 0; i < inventory.getSize(); i++) {
-            ItemStack item = inventory.getItem(i);
-            if (item == null) continue;
-            
-            if (plugin.getItemManager().isGoldenChickenHeadItem(item)) {
-                int amount = item.getAmount();
-                goldenHeadsSold += amount;
-                inventory.setItem(i, null);
-            } 
-            else if (plugin.getItemManager().isChickenHeadItem(item)) {
-                int amount = item.getAmount();
-                headsSold += amount;
-                inventory.setItem(i, null);
+    private boolean handlePointsCommand(CommandSender sender, String[] args) {
+        if (args.length == 1) {
+            // Basic "/ch points" command - show player's own points
+            if (!(sender instanceof Player)) {
+                sender.sendMessage(getMsg("player_only_command", null));
+                return true;
             }
-        }
-
-        int totalHeads = headsSold + goldenHeadsSold;
-        if (totalHeads == 0) {
-            player.sendMessage(getMsg("sell_no_heads", null));
+            
+            Player player = (Player) sender;
+            if (!player.hasPermission("chickenhunt.player.points")) {
+                player.sendMessage(getMsg("no_permission", null));
+                return true;
+            }
+            
+            // Display player's points
+            int points = plugin.getPlayerStatsManager().getPoints(player.getUniqueId());
+            int chickensCaught = plugin.getPlayerStatsManager().getChickensCaught(player.getUniqueId());
+            
+            Map<String, String> placeholders = new HashMap<>();
+            placeholders.put("points", String.valueOf(points));
+            placeholders.put("chickens", String.valueOf(chickensCaught));
+            
+            player.sendMessage(getMsg("points_status", placeholders));
+            return true;
+        } else if (args.length >= 3) {
+            // Admin commands: "/ch points <add|set|reset> <player> [amount]"
+            if (!sender.hasPermission("chickenhunt.admin.points")) {
+                sender.sendMessage(getMsg("no_permission", null));
+                return true;
+            }
+            
+            String action = args[1].toLowerCase();
+            String targetPlayerName = args[2];
+            
+            // Get target player
+            Player targetPlayer = Bukkit.getPlayer(targetPlayerName);
+            if (targetPlayer == null) {
+                sender.sendMessage(getMsg("player_not_found", Map.of("player", targetPlayerName)));
+                return true;
+            }
+            
+            PlayerStatsManager statsManager = plugin.getPlayerStatsManager();
+            int currentPoints = statsManager.getPoints(targetPlayer.getUniqueId());
+            int newPoints = currentPoints;
+            
+            // Perform action based on the command
+            if (action.equals("add")) {
+                if (args.length < 4) {
+                    sender.sendMessage(getMsg("usage_points_add", null));
+                    return true;
+                }
+                
+                try {
+                    int amount = Integer.parseInt(args[3]);
+                    newPoints = currentPoints + amount;
+                    statsManager.setPoints(targetPlayer.getUniqueId(), newPoints);
+                    
+                    // Send messages
+                    Map<String, String> adminPlaceholders = new HashMap<>();
+                    adminPlaceholders.put("player", targetPlayer.getName());
+                    adminPlaceholders.put("amount", String.valueOf(amount));
+                    adminPlaceholders.put("new_points", String.valueOf(newPoints));
+                    
+                    sender.sendMessage(getMsg("points_added_admin", adminPlaceholders));
+                    
+                    Map<String, String> playerPlaceholders = new HashMap<>();
+                    playerPlaceholders.put("amount", String.valueOf(amount));
+                    playerPlaceholders.put("new_points", String.valueOf(newPoints));
+                    
+                    targetPlayer.sendMessage(getMsg("points_added_player", playerPlaceholders));
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(getMsg("invalid_number", null));
+                }
+            } else if (action.equals("set")) {
+                if (args.length < 4) {
+                    sender.sendMessage(getMsg("usage_points_set", null));
+                    return true;
+                }
+                
+                try {
+                    int amount = Integer.parseInt(args[3]);
+                    statsManager.setPoints(targetPlayer.getUniqueId(), amount);
+                    
+                    // Send messages
+                    Map<String, String> adminPlaceholders = new HashMap<>();
+                    adminPlaceholders.put("player", targetPlayer.getName());
+                    adminPlaceholders.put("amount", String.valueOf(amount));
+                    
+                    sender.sendMessage(getMsg("points_set_admin", adminPlaceholders));
+                    
+                    Map<String, String> playerPlaceholders = new HashMap<>();
+                    playerPlaceholders.put("amount", String.valueOf(amount));
+                    
+                    targetPlayer.sendMessage(getMsg("points_set_player", playerPlaceholders));
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(getMsg("invalid_number", null));
+                }
+            } else if (action.equals("reset")) {
+                statsManager.setPoints(targetPlayer.getUniqueId(), 0);
+                
+                // Send messages
+                Map<String, String> adminPlaceholders = new HashMap<>();
+                adminPlaceholders.put("player", targetPlayer.getName());
+                
+                sender.sendMessage(getMsg("points_reset_admin", adminPlaceholders));
+                
+                targetPlayer.sendMessage(getMsg("points_reset_player", null));
+            } else {
+                sender.sendMessage(getMsg("invalid_points_action", null));
+                return true;
+            }
+            
+            return true;
+        } else {
+            sender.sendMessage(getMsg("usage_points", null));
             return true;
         }
-
-        if (ChickenHunt.getEconomy() != null) {
-            moneyEarned = (headsSold * pricePerHead) + (goldenHeadsSold * pricePerGoldenHead);
-            ChickenHunt.getEconomy().depositPlayer(player, moneyEarned);
-        } else if (pricePerHead > 0) {
-            player.sendMessage(getMsg("sell_vault_not_found", null));
-        }
-        
-        Map<String, String> placeholders = new HashMap<>();
-        placeholders.put("amount", String.valueOf(totalHeads));
-        placeholders.put("regular", String.valueOf(headsSold));
-        placeholders.put("golden", String.valueOf(goldenHeadsSold));
-        placeholders.put("money", ChickenHunt.getEconomy() != null ? 
-                ChickenHunt.getEconomy().format(moneyEarned) : String.format("%.2f", moneyEarned));
-        
-        // Pesan yang menunjukkan rincian kepala reguler dan emas
-        if (goldenHeadsSold > 0) {
-            player.sendMessage(ChatColor.GREEN + "Kamu menjual " + headsSold + " kepala ayam biasa dan " + 
-                               ChatColor.GOLD + goldenHeadsSold + " kepala ayam emas " + 
-                               ChatColor.GREEN + "seharga " + placeholders.get("money") + "!");
-        } else {
-            player.sendMessage(getMsg("sell_success", placeholders));
-        }
-        
-        if (moneyEarned > 0) {
-            plugin.getPlayerStatsManager().addMoneyEarned(player.getUniqueId(), moneyEarned);
-        }
-        
-        return true;
     }
 
     private boolean handleStatusCommand(CommandSender sender, String[] args) {
@@ -377,8 +426,12 @@ public class CommandManager implements CommandExecutor, TabCompleter {
         }
 
         String type = "caught"; // Default
-        if (args.length > 1 && (args[1].equalsIgnoreCase("money") || args[1].equalsIgnoreCase("earned"))) {
-            type = "money";
+        if (args.length > 1) {
+            if (args[1].equalsIgnoreCase("money") || args[1].equalsIgnoreCase("earned")) {
+                type = "money";
+            } else if (args[1].equalsIgnoreCase("points")) {
+                type = "points";
+            }
         }
 
         int limit = plugin.getConfig().getInt("leaderboard.top-limit", 10);
@@ -401,7 +454,7 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                         "amount", String.valueOf(entry.getValue())
                 )));
             }
-        } else { // money
+        } else if (type.equals("money")) {
             Map<UUID, Double> topMoney = psm.getTopMoneyEarned(limit);
             if (topMoney.isEmpty()) {
                 sender.sendMessage(getRawMsg("leaderboard_empty", Map.of("type", "money earned")));
@@ -414,6 +467,20 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                         "rank", String.valueOf(rank++),
                         "player", player.getName() != null ? player.getName() : "Unknown",
                         "amount", formattedMoney
+                )));
+            }
+        } else { // points
+            Map<UUID, Integer> topPoints = psm.getTopPoints(limit);
+            if (topPoints.isEmpty()) {
+                sender.sendMessage(getRawMsg("leaderboard_empty", Map.of("type", "points earned")));
+                return true;
+            }
+            for (Map.Entry<UUID, Integer> entry : topPoints.entrySet()) {
+                OfflinePlayer player = Bukkit.getOfflinePlayer(entry.getKey());
+                sender.sendMessage(getRawMsg("leaderboard_entry_points", Map.of(
+                        "rank", String.valueOf(rank++),
+                        "player", player.getName() != null ? player.getName() : "Unknown",
+                        "amount", String.valueOf(entry.getValue())
                 )));
             }
         }
@@ -440,8 +507,8 @@ public class CommandManager implements CommandExecutor, TabCompleter {
             sender.sendMessage(ChatColor.YELLOW + "/ch help" + ChatColor.GRAY + " - Shows this help message.");
         } else if (sender.hasPermission("chickenhunt.player.help") || sender.hasPermission("chickenhunt.use")) { 
             sender.sendMessage(getRawMsg("help_header_player", null));
-            if (sender.hasPermission("chickenhunt.player.sell")) 
-                sender.sendMessage(getRawMsg("help_sell", null));
+            if (sender.hasPermission("chickenhunt.player.points")) 
+                sender.sendMessage(getRawMsg("help_points", null));
             if (sender.hasPermission("chickenhunt.player.status")) 
                 sender.sendMessage(getRawMsg("help_status", null));
             if (sender.hasPermission("chickenhunt.player.top")) 
@@ -457,7 +524,7 @@ public class CommandManager implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            List<String> subCommands = new ArrayList<>(Arrays.asList("wand", "create", "delete", "list", "start", "stop", "reload", "help", "sell", "top", "status"));
+            List<String> subCommands = new ArrayList<>(Arrays.asList("wand", "create", "delete", "list", "start", "stop", "reload", "help", "points", "top", "status"));
             return subCommands.stream()
                     .filter(s -> s.startsWith(args[0].toLowerCase()))
                     .filter(s -> {
@@ -468,7 +535,7 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                         if (s.equals("start") && !sender.hasPermission("chickenhunt.admin.start")) return false;
                         if (s.equals("stop") && !sender.hasPermission("chickenhunt.admin.stop")) return false;
                         if (s.equals("reload") && !sender.hasPermission("chickenhunt.admin.reload")) return false;
-                        if (s.equals("sell") && !sender.hasPermission("chickenhunt.player.sell")) return false;
+                        if (s.equals("points") && !sender.hasPermission("chickenhunt.player.points")) return false;
                         if (s.equals("top") && !sender.hasPermission("chickenhunt.player.top")) return false;
                         if (s.equals("status") && !sender.hasPermission("chickenhunt.player.status")) return false;
                         return true;
@@ -482,6 +549,24 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                 return plugin.getRegionManager().getRegionNames().stream()
                         .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
+            } else if (subCommand.equals("top")) {
+                return Arrays.asList("caught", "points", "money").stream()
+                        .filter(s -> s.startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+            } else if (subCommand.equals("points") && sender.hasPermission("chickenhunt.admin.points")) {
+                return Arrays.asList("add", "set", "reset").stream()
+                        .filter(s -> s.startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+            }
+        } else if (args.length == 3) {
+            String subCommand = args[0].toLowerCase();
+            if (subCommand.equals("points") && sender.hasPermission("chickenhunt.admin.points")) {
+                if (args[1].equals("add") || args[1].equals("set") || args[1].equals("reset")) {
+                    return Bukkit.getOnlinePlayers().stream()
+                            .map(Player::getName)
+                            .filter(name -> name.toLowerCase().startsWith(args[2].toLowerCase()))
+                            .collect(Collectors.toList());
+                }
             }
         }
         return Collections.emptyList();

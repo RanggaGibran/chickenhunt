@@ -16,7 +16,7 @@ commands:
 permissions:
   chickenhunt.use:
     description: Allows basic use of ChickenHunt commands.
-    default: true
+    default: "true"
   chickenhunt.admin:
     description: Allows access to all admin commands for ChickenHunt.
     default: op
@@ -29,6 +29,7 @@ permissions:
       chickenhunt.admin.stop: true
       chickenhunt.admin.reload: true
       chickenhunt.admin.config: true
+      chickenhunt.admin.points: true
   chickenhunt.admin.wand:
     description: Allows use of /ch wand.
     default: op
@@ -53,8 +54,14 @@ permissions:
   chickenhunt.admin.config:
     description: Allows use of /ch config.
     default: op
+  chickenhunt.admin.points:
+    description: Allows use of /ch points commands for managing player points.
+    default: op
   chickenhunt.player.sell:
     description: Allows use of /ch sell.
+    default: true
+  chickenhunt.player.points:
+    description: Allows use of /ch points.
     default: true
   chickenhunt.player.top:
     description: Allows use of /ch top.

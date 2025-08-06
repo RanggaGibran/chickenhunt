@@ -11,7 +11,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
 
 public class RegionManager {
     private final ChickenHunt plugin;
@@ -33,9 +32,8 @@ public class RegionManager {
         if (!regionsFile.exists()) {
             try {
                 regionsFile.createNewFile();
-                plugin.getLogger().info("Created regions.yml");
             } catch (IOException e) {
-                plugin.getLogger().log(Level.SEVERE, "Could not create regions.yml", e);
+                // Silent fail
             }
         }
         regionsConfig = YamlConfiguration.loadConfiguration(regionsFile);
@@ -59,12 +57,11 @@ public class RegionManager {
                         Region region = new Region(regionName, worldName, minX, minY, minZ, maxX, maxY, maxZ);
                         regions.put(regionName.toLowerCase(), region);
                     } catch (Exception e) {
-                        plugin.getLogger().warning("Failed to load region '" + regionName + "': " + e.getMessage());
+                        // Silent fail on region load errors
                     }
                 }
             }
         }
-        plugin.getLogger().info("Loaded " + regions.size() + " regions.");
     }
 
     public void saveRegions() {
@@ -75,7 +72,7 @@ public class RegionManager {
         try {
             regionsConfig.save(regionsFile);
         } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not save regions.yml", e);
+            // Silent fail on save errors
         }
     }
 

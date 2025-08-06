@@ -42,7 +42,6 @@ public class GameScheduler {
     private void scheduleNextGame() {
         List<String> regions = plugin.getConfig().getStringList("auto-scheduler.regions");
         if (regions.isEmpty()) {
-            plugin.getLogger().warning("No regions configured for auto-scheduler. Skipping scheduled game.");
             return;
         }
 
@@ -51,7 +50,6 @@ public class GameScheduler {
         activeRegion = regionName;
 
         if (!plugin.getRegionManager().regionExists(regionName)) {
-            plugin.getLogger().warning("Region " + regionName + " does not exist. Skipping scheduled game.");
             return;
         }
 

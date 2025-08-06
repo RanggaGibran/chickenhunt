@@ -76,7 +76,7 @@ public class WandListener implements Listener {
             player.sendMessage(getMsg("pos1_set", placeholders));
         } else if (action == Action.RIGHT_CLICK_BLOCK) {
             plugin.setPlayerSelection(player, 2, location);
-            player.sendMessage(getMsg("pos2_set", placeholders));
+            player.sendMessage(getMsg("pos1_set", placeholders).replace("Position 1", "Position 2"));
         }
     }
 }

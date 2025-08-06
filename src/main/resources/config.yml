@@ -17,8 +17,8 @@ messages:
   wand_lore_pos1: "&7Left-click to set position 1"
   wand_lore_pos2: "&7Right-click to set position 2"
   
-  usage_create: "&cUsage: /ch create <regionName>" # Tambahkan ini jika belum ada
-  usage_delete: "&cUsage: /ch delete <regionName>" # Tambahkan ini jika belum ada
+  usage_create: "&cUsage: /ch create <regionName>" 
+  usage_delete: "&cUsage: /ch delete <regionName>" 
   usage_start: "&cUsage: /ch start <regionName> [durationSeconds]"
   usage_stop: "&cUsage: /ch stop <regionName>"
   invalid_duration: "&cDuration must be a positive number."
@@ -30,127 +30,158 @@ messages:
   game_stopped_manual: "&aGame manually stopped in region '%region%'."
   game_ended_timed: "&eGame in region '%region%' has ended due to time limit."
   
-  chicken_caught: "&a+1 Kepala Ayam!"
-  chicken_cannot_damage: "&cKamu tidak bisa melukai ayam spesial ini!"
+  chicken_caught: "&a+1 Chicken!"
+  chicken_cannot_damage: "&cYou cannot hurt this special chicken!"
   
-  sell_no_heads: "&eKamu tidak memiliki Kepala Ayam Spesial untuk dijual."
-  sell_success: "&aKamu berhasil menjual %amount% Kepala Ayam Spesial seharga %money%!"
-  sell_vault_not_found: "&cTidak dapat menjual kepala ayam, fitur ekonomi tidak aktif."
-
-  status_usage: "&cUsage: /ch status [namaRegion]"
-  status_no_active_games: "&eSaat ini tidak ada game ChickenHunt yang aktif."
-  status_header_all: "&6--- Status Game ChickenHunt Aktif ---"
-  status_header_region: "&6--- Status Game di Region %region% ---"
+  points_status: "&aYou have &e%points% &apoints from catching &e%chickens% &achickens!"
+  
+  # Admin points command messages
+  usage_points: "&cUsage: /ch points [add|set|reset] <player> [amount]"
+  usage_points_add: "&cUsage: /ch points add <player> <amount>"
+  usage_points_set: "&cUsage: /ch points set <player> <amount>"
+  invalid_number: "&cInvalid number. Please use a valid integer."
+  invalid_points_action: "&cInvalid action. Use add, set, or reset."
+  player_not_found: "&cPlayer '%player%' not found or not online."
+  
+  # Points admin feedback
+  points_added_admin: "&aAdded &e%amount% &apoints to &e%player%&a. New total: &e%new_points%"
+  points_added_player: "&aYou received &e%amount% &apoints from an admin. New total: &e%new_points%"
+  points_set_admin: "&aSet &e%player%'s &apoints to &e%amount%"
+  points_set_player: "&aAn admin set your points to &e%amount%"
+  points_reset_admin: "&aReset &e%player%'s &apoints to 0"
+  points_reset_player: "&cYour points have been reset to 0 by an admin"
+  
+  # Game countdown message
+  game_countdown: "&aGame in region &e%region% &awill start in &e%seconds% &aseconds!"
+  
+  status_usage: "&cUsage: /ch status [regionName]"
+  status_no_active_games: "&eThere are no active ChickenHunt games currently."
+  status_header_all: "&6--- Active ChickenHunt Games Status ---"
+  status_header_region: "&6--- Game Status in Region %region% ---"
   status_game_entry: "&e- Region: &f%region% &7(&f%time_left%&7)"
-  status_game_entry_indefinite: "&e- Region: &f%region% &7(Durasi Tidak Terbatas)"
-  status_region_not_found_or_inactive: "&cRegion '%region%' tidak ditemukan atau game tidak aktif di sana."
+  status_game_entry_indefinite: "&e- Region: &f%region% &7(Indefinite Duration)"
+  status_region_not_found_or_inactive: "&cRegion '%region%' not found or game is not active there."
   
   help_header_player: "&6--- ChickenHunt Player Commands ---"
-  help_sell: "&e/ch sell &7- Menjual semua Kepala Ayam Spesial."
-  help_status: "&e/ch status [region] &7- Melihat status game."
-  help_top: "&e/ch top [caught|money] &7- Melihat papan peringkat."
-  help_player_command: "&e/ch help &7- Menampilkan bantuan ini."
+  help_points: "&e/ch points &7- View your current points."
+  help_status: "&e/ch status [region] &7- View game status."
+  help_top: "&e/ch top [caught|points|money] &7- View leaderboards."
+  help_player_command: "&e/ch help &7- Show this help message."
 
-  leaderboard_header: "&6--- Papan Peringkat Teratas: %type% ---"
-  leaderboard_entry_caught: "&e#%rank%. &f%player% &7- &a%amount% ayam"
+  leaderboard_header: "&6--- Top Leaderboard: %type% ---"
+  leaderboard_entry_caught: "&e#%rank%. &f%player% &7- &a%amount% chickens"
   leaderboard_entry_money: "&e#%rank%. &f%player% &7- &a%amount%"
-  leaderboard_empty: "&ePapan peringkat untuk %type% masih kosong."
-  usage_top: "&cUsage: /ch top [caught|money]"
+  leaderboard_entry_points: "&e#%rank%. &f%player% &7- &a%amount% points"
+  leaderboard_empty: "&eLeaderboard for %type% is still empty."
+  usage_top: "&cUsage: /ch top [caught|points|money]"
   
-  unknown_command: "&cPerintah tidak dikenal. Gunakan /ch help."
-  select_positions_first: "&cKamu harus memilih dua posisi dengan wand terlebih dahulu."
-  positions_different_worlds: "&cKedua titik seleksi harus berada di dunia yang sama."
-  region_create_failed: "&cGagal membuat region '%region%'. Pastikan seleksi valid."
-  no_regions_yet: "&eBelum ada region yang dibuat."
-  region_list: "&6Region yang tersedia: &f%regions%"
-  chicken_head_no_place: "&cKepala ayam spesial ini tidak dapat diletakkan!"
-  cooldown_active: "&cTunggu &f%seconds%s &cuntuk menangkap lagi!"
+  unknown_command: "&cUnknown command. Use /ch help."
+  select_positions_first: "&cYou must select two positions with the wand first."
+  positions_different_worlds: "&cBoth selection points must be in the same world."
+  region_create_failed: "&cFailed to create region '%region%'. Ensure selection is valid."
+  no_regions_yet: "&eNo regions have been created yet."
+  region_list: "&6Available regions: &f%regions%"
+  chicken_head_no_place: "&cThis special chicken head cannot be placed!"
+  cooldown_active: "&cWait &f%seconds%s &cto catch again!"
 
-# Pengaturan Game
+# Game Settings
 game-settings:
   initial-chickens-per-region: 5
   max-chickens-per-region: 20
-  chicken-spawn-interval-seconds: 10 # Seberapa sering gelombang spawn baru muncul
-  chickens-per-spawn-wave: 1 # Berapa banyak ayam yang spawn per gelombang
-  chicken-name: "&6Ayam Spesial" # Nama ayam spesial
-  catch-cooldown-seconds: 1.5  # Cooldown antara setiap tangkapan ayam
+  chicken-spawn-interval-seconds: 10 # How often new spawn waves appear
+  chickens-per-spawn-wave: 1 # How many chickens spawn per wave
+  chicken-name: "&6Special Chicken" # Special chicken name
+  catch-cooldown-seconds: 1.5  # Cooldown between chicken catches
+  points-per-catch: 1 # Points earned for regular chicken catch
+  countdown-seconds: 10 # Countdown before game starts
+  display-scoreboard: true # Whether to display scoreboard during game
+  default-duration-seconds: 300  # Default duration of 5 minutes if none specified
 
   # Golden Chicken Settings
   golden-chicken:
     enabled: true
-    name: "&eAyam Emas"
+    name: "&eGolden Chicken"
     spawn-chance: 0.15
-    reward-multiplier: 3
+    points-value: 2 # Points earned for golden chicken catch
     texture_value: "c414822a85c5e7073e207da133ce226859b0f74f238d584c3d3a42f223bb16bf"
 
 # Item Kepala Ayam
 chicken-head-item:
-  material: "PLAYER_HEAD" # atau material lain seperti GOLD_NUGGET
-  name: "&6Kepala Ayam Spesial"
+  material: "PLAYER_HEAD"
+  name: "&6Special Chicken Head"
   lore:
-    - "&7Klik kanan ayam spesial untuk mendapatkannya!"
-    - "&7Jual ini dengan /ch sell"
-  # Jika material: PLAYER_HEAD, Anda bisa menambahkan nilai tekstur base64
-  # Contoh: (Ini adalah tekstur kepala ayam dari Minecraft-Heads.com)
+    - "&7Right-click special chickens to catch them!"
+    - "&7Earn points for the leaderboard!"
+  # If material: PLAYER_HEAD, you can add a base64 texture value
+  # Example: (This is a chicken head texture from Minecraft-Heads.com)
   texture_value: "c414822a85c5e7073e207da133ce226859b0f74f238d584c3d3a42f223bb16bf"
-  sell-price: 50.0 # Harga jual per kepala ayam jika Vault aktif
 
 # Pesan terkait interaksi ayam
 # (Bagian ini sudah digabungkan ke dalam messages di atas)
-# Pengaturan Leaderboard
-leaderboard:
-  top-limit: 10 # Jumlah pemain yang ditampilkan di /ch top
+# Scoreboard Settings
+scoreboard:
+  title: "&6&lChicken Hunt"
+  lines:
+    - "&7Region: &f%region%"
+    - "&7Time left: &f%time_left%"
+    - ""
+    - "&7Your Points: &f%points%"
+    - "&7Chickens Caught: &f%caught%"
+    - ""
+    - "&7Top Player: &f%top_player%"
+    - "&f%top_points% &7points"
+  update-interval-ticks: 20 # Update scoreboard every second
 
-# Pengaturan Efek
+# Effect Settings
 effects:
   catch_chicken:
     enabled: true
     sound:
-      name: "ENTITY_CHICKEN_HURT" # Nama Sound dari Spigot API (https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Sound.html)
-      volume: 1.0 # Float, 0.0 hingga 1.0+
-      pitch: 1.0  # Float, 0.5 hingga 2.0
+      name: "ENTITY_CHICKEN_HURT"
+      volume: 1.0
+      pitch: 1.0
     particle:
-      name: "SMOKE_NORMAL" # Nama Particle dari Spigot API (https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Particle.html)
-      count: 10       # Jumlah partikel
-      offset_x: 0.2   # Sebaran partikel X
-      offset_y: 0.3   # Sebaran partikel Y
-      offset_z: 0.2   # Sebaran partikel Z
-      speed: 0.05     # Kecepatan partikel (extra)
+      name: "SMOKE_NORMAL"
+      count: 10
+      offset_x: 0.2
+      offset_y: 0.3
+      offset_z: 0.2
+      speed: 0.05
       # data: ""      # Data tambahan untuk partikel tertentu (misalnya REDSTONE: "255,0,0" untuk warna merah)
 
-# Pengaturan jadwal otomatis
+# Auto-scheduler Settings
 auto-scheduler:
   enabled: true
-  regions: ["hunt1", "hunt2"]  # Daftar region yang akan dipilih secara acak
-  interval-minutes: 30         # Game dimulai setiap 30 menit
-  game-duration-minutes: 5     # Durasi game 5 menit
-  warning-seconds: 60          # Peringatan 60 detik sebelum game dimulai
+  regions: ["hunt1", "hunt2"]  # List of regions to choose from randomly
+  interval-minutes: 30         # Game starts every 30 minutes
+  game-duration-minutes: 5     # Game duration of 5 minutes
+  warning-seconds: 60          # Warning 60 seconds before game starts
   announcement:
     enabled: true
-    start-message: "&aGame ChickenHunt di region %region% akan dimulai dalam %seconds% detik!"
-    started-message: "&aGame ChickenHunt di region %region% telah dimulai untuk %minutes% menit!"
-    end-message: "&eGame ChickenHunt di region %region% telah berakhir!"
+    start-message: "&aChickenHunt game in region %region% will start in %seconds% seconds!"
+    started-message: "&aChickenHunt game in region %region% has started for %minutes% minutes!"
+    end-message: "&eChickenHunt game in region %region% has ended!"
 
-# Sistem Reward Bertingkat
+# Tiered Reward System
 rewards:
   tier-rewards:
     enabled: true
-    message: "&a&lSELAMAT! &eKamu telah mendapatkan hadiah untuk menangkap &6%count% &eayam!"
+    message: "&a&lCONGRATULATIONS! &eYou have received a reward for catching &6%count% &echickens!"
     tiers:
       - count: 10
         commands:
           - "give %player% minecraft:diamond 1"
-          - "title %player% subtitle \"&eDiberikan 1 Diamond\""
+          - "title %player% subtitle \"&eGiven 1 Diamond\""
       - count: 25
         commands:
           - "give %player% minecraft:emerald 3"
-          - "title %player% subtitle \"&eDiberikan 3 Emerald\""
+          - "title %player% subtitle \"&eGiven 3 Emeralds\""
       - count: 50
         commands:
           - "give %player% minecraft:netherite_ingot 1"
-          - "title %player% subtitle \"&eDiberikan 1 Netherite Ingot\""
+          - "title %player% subtitle \"&eGiven 1 Netherite Ingot\""
       - count: 100
         commands:
           - "give %player% minecraft:diamond_block 1"
           - "give %player% minecraft:emerald_block 1"
-          - "broadcast &6%player% &etelah menjadi pemburu legendaris dengan 100 tangkapan ayam!"
+          - "broadcast &6%player% &ehas become a legendary hunter with 100 chicken catches!"

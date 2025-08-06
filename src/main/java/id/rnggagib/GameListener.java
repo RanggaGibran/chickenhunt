@@ -17,7 +17,7 @@ import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import net.md_5.bungee.api.ChatMessageType;
-import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -57,11 +57,11 @@ public class GameListener implements Listener {
             long timeElapsed = currentTime - lastCatchTime;
             
             if (timeElapsed < cooldownMillis) {
-                // Cooldown masih aktif
-                double remainingSeconds = Math.ceil((cooldownMillis - timeElapsed) / 100.0) / 10.0; // Bulatkan ke 1 desimal
+                // Cooldown still active
+                double remainingSeconds = Math.ceil((cooldownMillis - timeElapsed) / 100.0) / 10.0; // Round to 1 decimal
                 Map<String, String> placeholders = Map.of("seconds", String.format("%.1f", remainingSeconds));
                 String cooldownMessage = plugin.getRawMessage("cooldown_active", placeholders);
-                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(cooldownMessage));
+                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new ComponentBuilder(cooldownMessage).create());
                 event.setCancelled(true);
                 return;
             }
@@ -79,24 +79,23 @@ public class GameListener implements Listener {
             gameInstance.removeChicken(chicken);
 
             boolean isGolden = gameInstance.isGoldenChicken(chicken);
-            ItemStack headItem;
             String message;
+            int pointsEarned;
             
             if (isGolden) {
-                headItem = plugin.getItemManager().getGoldenChickenHeadItem();
-                message = ChatColor.GOLD + "+1 Kepala Ayam Emas!";
+                pointsEarned = plugin.getConfig().getInt("game-settings.golden-chicken.points-value", 2);  // Changed default from 5 to 2
+                message = ChatColor.GOLD + "+" + pointsEarned + " Points!";
                 playGoldenCatchEffects(player, chicken.getLocation().add(0, 0.5, 0));
             } else {
-                headItem = plugin.getItemManager().getChickenHeadItem();
-                message = plugin.getRawMessage("chicken_caught", null);
+                pointsEarned = plugin.getConfig().getInt("game-settings.points-per-catch", 1);
+                message = ChatColor.GREEN + "+" + pointsEarned + " Points!";
                 playCatchEffects(player, chicken.getLocation().add(0, 0.5, 0));
             }
             
-            player.getInventory().addItem(headItem);
-            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(message));
+            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new ComponentBuilder(message).create());
             
-            int increment = isGolden ? 3 : 1;
-            plugin.getPlayerStatsManager().incrementChickensCaught(player.getUniqueId(), increment);
+            plugin.getPlayerStatsManager().addPoints(player.getUniqueId(), pointsEarned);
+            plugin.getPlayerStatsManager().incrementChickensCaught(player.getUniqueId(), 1);
         }
     }
 

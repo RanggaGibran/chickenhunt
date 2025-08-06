@@ -55,6 +55,11 @@ public class ChickenHuntExpansion extends PlaceholderExpansion {
             return String.valueOf(statsManager.getChickensCaught(player.getUniqueId()));
         }
 
+        // %chickenhunt_points%
+        if (identifier.equals("points")) {
+            return String.valueOf(statsManager.getPoints(player.getUniqueId()));
+        }
+
         // %chickenhunt_money_earned%
         if (identifier.equals("money_earned")) {
             double earned = statsManager.getMoneyEarned(player.getUniqueId());
@@ -123,6 +128,22 @@ public class ChickenHuntExpansion extends PlaceholderExpansion {
                     String name = p.getName() != null ? p.getName() : "Unknown";
                     double money = topMoney.get(uuid);
                     return name + ": " + moneyFormat.format(money);
+                }
+            } catch (NumberFormatException | IndexOutOfBoundsException e) {
+                return "";
+            }
+        }
+        
+        if (identifier.startsWith("top_points_")) {
+            try {
+                int rank = Integer.parseInt(identifier.substring(11)) - 1;
+                Map<UUID, Integer> topPoints = statsManager.getTopPoints(10);
+                if (rank >= 0 && rank < topPoints.size()) {
+                    UUID uuid = topPoints.keySet().stream().collect(Collectors.toList()).get(rank);
+                    OfflinePlayer p = Bukkit.getOfflinePlayer(uuid);
+                    String name = p.getName() != null ? p.getName() : "Unknown";
+                    int points = topPoints.get(uuid);
+                    return name + ": " + points;
                 }
             } catch (NumberFormatException | IndexOutOfBoundsException e) {
                 return "";

@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 public class PlayerStatsManager {
@@ -29,6 +28,7 @@ public class PlayerStatsManager {
 
     private final Map<UUID, Integer> chickensCaught = new HashMap<>();
     private final Map<UUID, Double> moneyEarned = new HashMap<>();
+    private final Map<UUID, Integer> pointsEarned = new HashMap<>(); // New points map
     private final Map<UUID, Set<Integer>> rewardsGiven = new HashMap<>();
 
     public PlayerStatsManager(ChickenHunt plugin) {
@@ -46,7 +46,7 @@ public class PlayerStatsManager {
             try {
                 statsFile.createNewFile();
             } catch (IOException e) {
-                plugin.getLogger().log(Level.SEVERE, "Could not create playerstats.yml", e);
+                // Silent fail
             }
         }
         statsConfig = YamlConfiguration.loadConfiguration(statsFile);
@@ -55,6 +55,7 @@ public class PlayerStatsManager {
     public void loadStats() {
         chickensCaught.clear();
         moneyEarned.clear();
+        pointsEarned.clear();
         rewardsGiven.clear();
 
         ConfigurationSection caughtSection = statsConfig.getConfigurationSection("chickensCaught");
@@ -63,7 +64,7 @@ public class PlayerStatsManager {
                 try {
                     chickensCaught.put(UUID.fromString(uuidString), caughtSection.getInt(uuidString));
                 } catch (IllegalArgumentException e) {
-                    plugin.getLogger().warning("Invalid UUID in chickensCaught: " + uuidString);
+                    // Invalid UUID, skip
                 }
             }
         }
@@ -74,7 +75,19 @@ public class PlayerStatsManager {
                 try {
                     moneyEarned.put(UUID.fromString(uuidString), moneySection.getDouble(uuidString));
                 } catch (IllegalArgumentException e) {
-                    plugin.getLogger().warning("Invalid UUID in moneyEarned: " + uuidString);
+                    // Invalid UUID, skip
+                }
+            }
+        }
+        
+        // Load points data
+        ConfigurationSection pointsSection = statsConfig.getConfigurationSection("pointsEarned");
+        if (pointsSection != null) {
+            for (String uuidString : pointsSection.getKeys(false)) {
+                try {
+                    pointsEarned.put(UUID.fromString(uuidString), pointsSection.getInt(uuidString));
+                } catch (IllegalArgumentException e) {
+                    // Invalid UUID, skip
                 }
             }
         }
@@ -95,21 +108,21 @@ public class PlayerStatsManager {
                     }
                     rewardsGiven.put(uuid, tiers);
                 } catch (IllegalArgumentException e) {
-                    plugin.getLogger().warning("Invalid UUID in rewardsGiven: " + uuidString);
+                    // Invalid UUID, skip
                 }
             }
         }
-        
-        plugin.getLogger().info("Loaded stats for " + chickensCaught.size() + " players (caught) and " + moneyEarned.size() + " players (money).");
     }
 
     public void saveStats() {
         statsConfig.set("chickensCaught", null);
         statsConfig.set("moneyEarned", null);
+        statsConfig.set("pointsEarned", null);
         statsConfig.set("rewardsGiven", null);
 
         chickensCaught.forEach((uuid, count) -> statsConfig.set("chickensCaught." + uuid.toString(), count));
         moneyEarned.forEach((uuid, amount) -> statsConfig.set("moneyEarned." + uuid.toString(), amount));
+        pointsEarned.forEach((uuid, points) -> statsConfig.set("pointsEarned." + uuid.toString(), points));
         
         for (Map.Entry<UUID, Set<Integer>> entry : rewardsGiven.entrySet()) {
             statsConfig.set("rewardsGiven." + entry.getKey().toString(), new ArrayList<>(entry.getValue()));
@@ -118,7 +131,7 @@ public class PlayerStatsManager {
         try {
             statsConfig.save(statsFile);
         } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not save playerstats.yml", e);
+            // Silent fail
         }
     }
 
@@ -126,10 +139,14 @@ public class PlayerStatsManager {
         int previousCaught = chickensCaught.getOrDefault(playerId, 0);
         int newTotal = previousCaught + amount;
         chickensCaught.put(playerId, newTotal);
+        saveStats(); // Save changes to file
         
         Player player = Bukkit.getPlayer(playerId);
         if (player != null && player.isOnline()) {
             checkAndGiveRewards(player, newTotal);
+            
+            // Update scoreboards to reflect the new chicken count
+            updateScoreboards();
         }
     }
     
@@ -178,6 +195,52 @@ public class PlayerStatsManager {
                 );
             }
         }
+    }
+
+    public void addPoints(UUID playerId, int amount) {
+        pointsEarned.put(playerId, getPoints(playerId) + amount);
+        saveStats(); // Save changes to file
+        updateScoreboards(); // Update all active scoreboards
+    }
+    
+    public void setPoints(UUID playerId, int amount) {
+        pointsEarned.put(playerId, amount);
+        saveStats(); // Save changes to file
+        updateScoreboards(); // Update all active scoreboards
+    }
+    
+    public int getPoints(UUID playerId) {
+        return pointsEarned.getOrDefault(playerId, 0);
+    }
+    
+    /**
+     * Updates all active scoreboards to show the latest point values
+     */
+    private void updateScoreboards() {
+        // Check if plugin and gameManager are available
+        if (plugin.getGameManager() == null || plugin.getScoreboardHandler() == null) {
+            return;
+        }
+        
+        // Get all active games
+        Map<String, GameInstance> activeGames = plugin.getGameManager().getActiveGames();
+        
+        // For each active game, update scoreboards for all players in the region
+        for (GameInstance game : activeGames.values()) {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                // Only update for players in the game region
+                if (game.getRegion().isInRegion(player.getLocation())) {
+                    plugin.getScoreboardHandler().updateScoreboard(player, game);
+                }
+            }
+        }
+    }
+
+    public Map<UUID, Integer> getTopPoints(int limit) {
+        return pointsEarned.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+                .limit(limit)
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
     }
 
     public void addMoneyEarned(UUID playerId, double amount) {
