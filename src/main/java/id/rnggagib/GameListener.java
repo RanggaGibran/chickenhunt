@@ -96,6 +96,9 @@ public class GameListener implements Listener {
             
             plugin.getPlayerStatsManager().addPoints(player.getUniqueId(), pointsEarned);
             plugin.getPlayerStatsManager().incrementChickensCaught(player.getUniqueId(), 1);
+            
+            // Check for speed boost trigger
+            gameInstance.checkSpeedBoost(player);
         }
     }
 

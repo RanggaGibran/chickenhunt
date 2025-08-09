@@ -30,6 +30,8 @@ permissions:
       chickenhunt.admin.reload: true
       chickenhunt.admin.config: true
       chickenhunt.admin.points: true
+      chickenhunt.admin.forcestart: true
+      chickenhunt.admin.forcejoin: true
   chickenhunt.admin.wand:
     description: Allows use of /ch wand.
     default: op
@@ -75,3 +77,18 @@ permissions:
   chickenhunt.player.rewards:
     description: Allows use of /ch rewards.
     default: true
+  chickenhunt.player.join:
+    description: Allows use of /ch join.
+    default: true
+  chickenhunt.player.leave:
+    description: Allows use of /ch leave.
+    default: true
+  chickenhunt.player.lobby:
+    description: Allows use of /ch lobby.
+    default: true
+  chickenhunt.admin.forcestart:
+    description: Allows use of /ch forcestart.
+    default: op
+  chickenhunt.admin.forcejoin:
+    description: Allows use of /ch forcejoin.
+    default: op

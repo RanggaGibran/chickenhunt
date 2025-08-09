@@ -33,11 +33,19 @@ public class RegionListener implements Listener {
             // Player entered the region
             if (!wasInRegion && isInRegion) {
                 plugin.getScoreboardHandler().createScoreboard(player, game);
+                // Add player to phase bossbar if exists
+                if (game.getPhaseManager() != null) {
+                    game.getPhaseManager().addPlayerToBossBar(player);
+                }
             }
             
             // Player left the region
             else if (wasInRegion && !isInRegion) {
                 plugin.getScoreboardHandler().removeScoreboard(player);
+                // Remove player from phase bossbar if exists
+                if (game.getPhaseManager() != null) {
+                    game.getPhaseManager().removePlayerFromBossBar(player);
+                }
             }
             // Player moved within region - update scoreboard to ensure it's accurate
             else if (isInRegion && wasInRegion) {

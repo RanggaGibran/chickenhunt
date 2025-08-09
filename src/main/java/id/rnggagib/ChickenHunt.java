@@ -17,6 +17,7 @@ public class ChickenHunt extends JavaPlugin {
   private ItemManager itemManager;
   private PlayerStatsManager playerStatsManager;
   private ScoreboardHandler scoreboardHandler;
+  private LobbyManager lobbyManager;
   private final Map<UUID, Location> playerSelectionsPos1 = new HashMap<>();
   private final Map<UUID, Location> playerSelectionsPos2 = new HashMap<>();
   private String prefix;
@@ -34,6 +35,7 @@ public class ChickenHunt extends JavaPlugin {
     this.itemManager = new ItemManager(this);
     this.playerStatsManager = new PlayerStatsManager(this);
     this.gameScheduler = new GameScheduler(this);
+    this.lobbyManager = new LobbyManager(this);
 
     if (!setupEconomy()) {
         // Vault not found, economy features won't work
@@ -46,6 +48,7 @@ public class ChickenHunt extends JavaPlugin {
     getServer().getPluginManager().registerEvents(new WandListener(this), this);
     getServer().getPluginManager().registerEvents(new GameListener(this), this);
     getServer().getPluginManager().registerEvents(new RegionListener(this), this);
+    getServer().getPluginManager().registerEvents(new LobbyListener(this), this);
 
     getServer().getScheduler().scheduleSyncRepeatingTask(this, () -> {
         // Logic untuk efek partikel pada ayam emas jika diperlukan
@@ -168,5 +171,9 @@ public class ChickenHunt extends JavaPlugin {
 
   public GameScheduler getGameScheduler() {
       return gameScheduler;
+  }
+
+  public LobbyManager getLobbyManager() {
+      return lobbyManager;
   }
 }

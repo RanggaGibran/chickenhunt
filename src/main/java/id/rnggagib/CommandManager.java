@@ -86,6 +86,16 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                 return handleScheduleCommand(sender);
             case "rewards":
                 return handleRewardsCommand(sender);
+            case "join":
+                return handleJoinCommand(sender, args);
+            case "leave":
+                return handleLeaveCommand(sender);
+            case "forcestart":
+                return handleForceStartCommand(sender, args);
+            case "forcejoin":
+                return handleForceJoinCommand(sender, args);
+            case "lobby":
+                return handleLobbyCommand(sender, args);
             default:
                 sender.sendMessage(getMsg("unknown_command", null));
                 return true;
@@ -524,7 +534,7 @@ public class CommandManager implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            List<String> subCommands = new ArrayList<>(Arrays.asList("wand", "create", "delete", "list", "start", "stop", "reload", "help", "points", "top", "status"));
+            List<String> subCommands = new ArrayList<>(Arrays.asList("wand", "create", "delete", "list", "start", "stop", "reload", "help", "points", "top", "status", "join", "leave", "lobby", "forcestart", "forcejoin"));
             return subCommands.stream()
                     .filter(s -> s.startsWith(args[0].toLowerCase()))
                     .filter(s -> {
@@ -538,6 +548,11 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                         if (s.equals("points") && !sender.hasPermission("chickenhunt.player.points")) return false;
                         if (s.equals("top") && !sender.hasPermission("chickenhunt.player.top")) return false;
                         if (s.equals("status") && !sender.hasPermission("chickenhunt.player.status")) return false;
+                        if (s.equals("join") && !sender.hasPermission("chickenhunt.player.join")) return false;
+                        if (s.equals("leave") && !sender.hasPermission("chickenhunt.player.leave")) return false;
+                        if (s.equals("lobby") && !sender.hasPermission("chickenhunt.player.lobby")) return false;
+                        if (s.equals("forcestart") && !sender.hasPermission("chickenhunt.admin.forcestart")) return false;
+                        if (s.equals("forcejoin") && !sender.hasPermission("chickenhunt.admin.forcejoin")) return false;
                         return true;
                     })
                     .collect(Collectors.toList());
@@ -557,6 +572,19 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                 return Arrays.asList("add", "set", "reset").stream()
                         .filter(s -> s.startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
+            } else if (subCommand.equals("join")) {
+                return plugin.getRegionManager().getRegionNames().stream()
+                        .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+            } else if (subCommand.equals("forcestart")) {
+                return plugin.getRegionManager().getRegionNames().stream()
+                        .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+            } else if (subCommand.equals("forcejoin")) {
+                return Bukkit.getOnlinePlayers().stream()
+                        .map(Player::getName)
+                        .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
             }
         } else if (args.length == 3) {
             String subCommand = args[0].toLowerCase();
@@ -567,6 +595,10 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                             .filter(name -> name.toLowerCase().startsWith(args[2].toLowerCase()))
                             .collect(Collectors.toList());
                 }
+            } else if (subCommand.equals("forcejoin") && sender.hasPermission("chickenhunt.admin.forcejoin")) {
+                return plugin.getRegionManager().getRegionNames().stream()
+                        .filter(name -> name.toLowerCase().startsWith(args[2].toLowerCase()))
+                        .collect(Collectors.toList());
             }
         }
         return Collections.emptyList();
@@ -653,4 +685,215 @@ public class CommandManager implements CommandExecutor, TabCompleter {
     
     return true;
 }
+
+    private boolean handleJoinCommand(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(getMsg("player_only_command", null));
+            return true;
+        }
+        
+        Player player = (Player) sender;
+        if (!player.hasPermission("chickenhunt.player.join")) {
+            player.sendMessage(getMsg("no_permission", null));
+            return true;
+        }
+        
+        if (args.length < 2) {
+            player.sendMessage(ChatColor.RED + "Usage: /ch join <region>");
+            return true;
+        }
+        
+        String regionName = args[1];
+        
+        // Check if player is already in a lobby
+        if (plugin.getLobbyManager().isInLobby(player)) {
+            player.sendMessage(ChatColor.RED + "Anda sudah berada di lobby! Ketik /ch leave untuk keluar.");
+            return true;
+        }
+        
+        // Check if lobby exists, if not create it
+        Lobby lobby = plugin.getLobbyManager().getLobby(regionName);
+        if (lobby == null) {
+            if (!plugin.getLobbyManager().createLobby(regionName)) {
+                player.sendMessage(ChatColor.RED + "Region '" + regionName + "' tidak ditemukan!");
+                return true;
+            }
+            lobby = plugin.getLobbyManager().getLobby(regionName);
+        }
+        
+        // Try to join the lobby
+        if (lobby.addPlayer(player)) {
+            player.sendMessage(ChatColor.GREEN + "Berhasil bergabung ke lobby region " + regionName + "!");
+        } else {
+            player.sendMessage(ChatColor.RED + "Gagal bergabung ke lobby! Lobby mungkin penuh atau game sedang berlangsung.");
+        }
+        
+        return true;
+    }
+    
+    private boolean handleLeaveCommand(CommandSender sender) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(getMsg("player_only_command", null));
+            return true;
+        }
+        
+        Player player = (Player) sender;
+        if (!player.hasPermission("chickenhunt.player.leave")) {
+            player.sendMessage(getMsg("no_permission", null));
+            return true;
+        }
+        
+        if (plugin.getLobbyManager().leaveLobby(player)) {
+            player.sendMessage(ChatColor.GREEN + "Berhasil keluar dari lobby!");
+        } else {
+            player.sendMessage(ChatColor.RED + "Anda tidak sedang berada di lobby!");
+        }
+        
+        return true;
+    }
+    
+    private boolean handleForceStartCommand(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(getMsg("player_only_command", null));
+            return true;
+        }
+        
+        Player player = (Player) sender;
+        if (!player.hasPermission("chickenhunt.admin.forcestart")) {
+            player.sendMessage(getMsg("no_permission", null));
+            return true;
+        }
+        
+        Lobby lobby = plugin.getLobbyManager().getPlayerLobby(player);
+        if (lobby == null) {
+            player.sendMessage(ChatColor.RED + "Anda tidak berada di lobby!");
+            return true;
+        }
+        
+        if (!lobby.canForceStart()) {
+            player.sendMessage(ChatColor.RED + "Force start tidak tersedia! Tunggu 5 detik setelah countdown dimulai.");
+            return true;
+        }
+        
+        lobby.forceStart();
+        return true;
+    }
+    
+    private boolean handleLobbyCommand(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(getMsg("player_only_command", null));
+            return true;
+        }
+        
+        Player player = (Player) sender;
+        if (!player.hasPermission("chickenhunt.player.lobby")) {
+            player.sendMessage(getMsg("no_permission", null));
+            return true;
+        }
+        
+        if (args.length < 2) {
+            // Show current lobby info
+            Lobby lobby = plugin.getLobbyManager().getPlayerLobby(player);
+            if (lobby == null) {
+                player.sendMessage(ChatColor.RED + "Anda tidak berada di lobby!");
+                player.sendMessage(ChatColor.YELLOW + "Gunakan /ch join <region> untuk bergabung ke lobby.");
+                return true;
+            }
+            
+            player.sendMessage(ChatColor.GREEN + "=== LOBBY INFO ===");
+            player.sendMessage(ChatColor.YELLOW + "Region: " + ChatColor.WHITE + lobby.getRegion().getName());
+            player.sendMessage(ChatColor.YELLOW + "Pemain: " + ChatColor.WHITE + lobby.getPlayerCount() + "/20");
+            player.sendMessage(ChatColor.YELLOW + "Status: " + ChatColor.WHITE + lobby.getState());
+            if (lobby.getState() == Lobby.LobbyState.COUNTDOWN) {
+                player.sendMessage(ChatColor.YELLOW + "Waktu tersisa: " + ChatColor.WHITE + lobby.getCountdown() + " detik");
+            }
+            return true;
+        }
+        
+        String subCommand = args[1].toLowerCase();
+        
+        if ("list".equals(subCommand)) {
+            player.sendMessage(ChatColor.GREEN + "=== DAFTAR LOBBY ===");
+            boolean foundAny = false;
+            for (Lobby lobby : plugin.getLobbyManager().getLobbies()) {
+                foundAny = true;
+                player.sendMessage(ChatColor.YELLOW + "• " + lobby.getRegion().getName() + 
+                    ChatColor.WHITE + " (" + lobby.getPlayerCount() + "/20) - " + lobby.getState());
+            }
+            if (!foundAny) {
+                player.sendMessage(ChatColor.GRAY + "Tidak ada lobby yang aktif.");
+            }
+            return true;
+        }
+        
+        return true;
+    }
+    
+    private boolean handleForceJoinCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("chickenhunt.admin.forcejoin")) {
+            sender.sendMessage(getMsg("no_permission", null));
+            return true;
+        }
+        
+        if (args.length < 3) {
+            sender.sendMessage(getMsg("usage_forcejoin", null));
+            return true;
+        }
+        
+        String playerName = args[1];
+        String regionName = args[2];
+        
+        Player target = Bukkit.getPlayer(playerName);
+        if (target == null) {
+            Map<String, String> placeholders = new HashMap<>();
+            placeholders.put("player", playerName);
+            sender.sendMessage(plugin.getMessage("player_not_found", placeholders));
+            return true;
+        }
+        
+        // Check if region exists
+        if (!plugin.getRegionManager().regionExists(regionName)) {
+            Map<String, String> placeholders = new HashMap<>();
+            placeholders.put("region", regionName);
+            sender.sendMessage(getMsg("region_not_found", placeholders));
+            return true;
+        }
+        
+        // Check if there's an active game in the region
+        if (!plugin.getGameManager().isGameActive(regionName)) {
+            Map<String, String> placeholders = new HashMap<>();
+            placeholders.put("region", regionName);
+            sender.sendMessage(plugin.getMessage("game_not_started", placeholders));
+            return true;
+        }
+        
+        // Check if player is already in a game
+        if (plugin.getLobbyManager().isInLobby(target)) {
+            Map<String, String> placeholders = new HashMap<>();
+            placeholders.put("player", playerName);
+            sender.sendMessage(plugin.getMessage("force_join_failed", placeholders));
+            return true;
+        }
+        
+        // Teleport player to the region center
+        Region region = plugin.getRegionManager().getRegion(regionName);
+        Location centerLocation = new Location(
+            Bukkit.getWorld(region.getWorldName()),
+            (region.getBoundingBox().getMinX() + region.getBoundingBox().getMaxX()) / 2,
+            region.getBoundingBox().getMaxY(),
+            (region.getBoundingBox().getMinZ() + region.getBoundingBox().getMaxZ()) / 2
+        );
+        
+        target.teleport(centerLocation);
+        
+        // Send messages
+        Map<String, String> placeholders = new HashMap<>();
+        placeholders.put("player", playerName);
+        placeholders.put("region", regionName);
+        
+        sender.sendMessage(plugin.getMessage("force_join_success", placeholders));
+        target.sendMessage(plugin.getMessage("force_join_target", placeholders));
+        
+        return true;
+    }
 }

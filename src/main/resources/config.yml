@@ -66,6 +66,10 @@ messages:
   help_points: "&e/ch points &7- View your current points."
   help_status: "&e/ch status [region] &7- View game status."
   help_top: "&e/ch top [caught|points|money] &7- View leaderboards."
+  help_join: "&e/ch join <region> &7- Join a lobby for the specified region."
+  help_leave: "&e/ch leave &7- Leave your current lobby."
+  help_lobby: "&e/ch lobby &7- View lobby status and available lobbies."
+  help_forcejoin: "&e/ch forcejoin <player> <region> &7- Force a player to join a game."
   help_player_command: "&e/ch help &7- Show this help message."
 
   leaderboard_header: "&6--- Top Leaderboard: %type% ---"
@@ -83,6 +87,38 @@ messages:
   region_list: "&6Available regions: &f%regions%"
   chicken_head_no_place: "&cThis special chicken head cannot be placed!"
   cooldown_active: "&cWait &f%seconds%s &cto catch again!"
+  
+  # Lobby Messages
+  lobby_join_success: "&aSuccessfully joined lobby for region %region%!"
+  lobby_join_failed: "&cFailed to join lobby! Lobby might be full or game is in progress."
+  lobby_leave_success: "&aSuccessfully left the lobby!"
+  lobby_leave_failed: "&cYou are not in a lobby!"
+  lobby_not_in_lobby: "&cYou are not in a lobby!"
+  lobby_already_in_lobby: "&cYou are already in a lobby! Type /ch leave to leave."
+  lobby_countdown_started: "&eCountdown started! Game will begin in %seconds% seconds!"
+  lobby_countdown_cancelled: "&cCountdown cancelled! Need at least %min_players% players."
+  lobby_force_start_available: "&aForce start is now available! Type /ch forcestart to start the game now!"
+  lobby_force_start_not_available: "&cForce start is not available! Wait 5 seconds after countdown starts."
+  lobby_game_starting: "&aGame is starting! Have fun!"
+  lobby_game_ended: "&eGame ended! Restoring players to original positions..."
+  lobby_player_joined: "&a%player% joined the lobby! (%current%/%max%)"
+  lobby_player_left: "&c%player% left the lobby! (%current%/%max%)"
+  lobby_status: "&7Lobby Status: &f%players%/%max_players% &7- State: &f%state%"
+  lobby_list_header: "&6--- Available Lobbies ---"
+  lobby_list_entry: "&e%region% &7- &f%players%/%max_players% &7(%state%)"
+  lobby_no_lobbies: "&eThere are no lobbies available."
+  
+  # Phase Messages
+  phase_changed: "&6[Phase Change] &r%phase_name% &7- %phase_description%"
+  phase_bossbar_title: "%phase_name% &8| &7Time: &f%time_left%s"
+  speed_boost_activated: "&c&lSPEED BOOST! &e%player% &freached %catches% catches! Chickens are now faster!"
+  speed_boost_ended: "&aSpeed boost ended! Chickens returned to normal speed."
+  
+  # Force Join Messages
+  force_join_success: "&aForced %player% to join the game in region %region%!"
+  force_join_failed: "&cFailed to force join %player%. They might already be in a game."
+  force_join_target: "&eYou have been forced to join the ChickenHunt game in region %region%!"
+  usage_forcejoin: "&cUsage: /ch forcejoin <player> <region>"
 
 # Game Settings
 game-settings:
@@ -96,6 +132,45 @@ game-settings:
   countdown-seconds: 10 # Countdown before game starts
   display-scoreboard: true # Whether to display scoreboard during game
   default-duration-seconds: 300  # Default duration of 5 minutes if none specified
+
+  # Lobby Settings
+  lobby:
+    min-players: 3              # Minimum players required to start
+    max-players: 10             # Maximum players allowed in lobby
+    countdown-seconds: 60       # Countdown duration before game starts
+    force-start-delay: 5        # Seconds after countdown starts before force start is allowed
+  
+  # Phase System Settings
+  phases:
+    enabled: true
+    phase-duration-seconds: 30  # Duration of each phase
+    phases:
+      - name: "&aCalm Phase"
+        description: "&7Chickens are relaxed and easy to catch"
+        chicken-speed-multiplier: 1.0
+        spawn-rate-multiplier: 1.0
+        bossbar-color: "GREEN"
+      - name: "&eAlert Phase"
+        description: "&7Chickens are getting nervous!"
+        chicken-speed-multiplier: 1.3
+        spawn-rate-multiplier: 1.2
+        bossbar-color: "YELLOW"
+      - name: "&cPanic Phase"
+        description: "&7Chickens are panicking and moving fast!"
+        chicken-speed-multiplier: 1.8
+        spawn-rate-multiplier: 1.5
+        bossbar-color: "RED"
+      - name: "&5Chaos Phase"
+        description: "&7Complete chaos! Chickens everywhere!"
+        chicken-speed-multiplier: 2.2
+        spawn-rate-multiplier: 2.0
+        bossbar-color: "PURPLE"
+  
+  # Speed Boost Settings
+  speed-boost:
+    trigger-catches: 10         # When a player reaches this many catches
+    speed-multiplier: 1.5       # How much faster chickens become
+    duration-seconds: 60        # How long the speed boost lasts
 
   # Golden Chicken Settings
   golden-chicken:

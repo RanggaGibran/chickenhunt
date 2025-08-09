@@ -26,6 +26,7 @@ public class GameInstance {
     private final int durationSeconds;
     private final GameManager gameManager;
     private final ScoreboardHandler scoreboardHandler;
+    private PhaseManager phaseManager;
 
     private final Set<UUID> activeChickens = new HashSet<>();
     private BukkitTask gameTimerTask;
@@ -33,6 +34,10 @@ public class GameInstance {
     private BukkitTask chickenAITask;
     private BukkitTask scoreboardUpdateTask;
     private int remainingSeconds;
+    
+    // Phase multipliers
+    private double currentSpeedMultiplier = 1.0;
+    private double currentSpawnRateMultiplier = 1.0;
 
     public static final String CHICKEN_METADATA_KEY = "ChickenHuntChicken";
     public static final String GOLDEN_CHICKEN_METADATA_KEY = "ChickenHuntGoldenChicken";
@@ -57,13 +62,19 @@ public class GameInstance {
     }
 
     public void start() {
+        // Initialize phase manager
+        phaseManager = new PhaseManager(plugin, this);
+        phaseManager.start();
+        
         spawnChickens(plugin.getConfig().getInt("game-settings.initial-chickens-per-region", 5));
 
         long spawnIntervalTicks = plugin.getConfig().getLong("game-settings.chicken-spawn-interval-seconds", 10) * 20L;
         chickenSpawnerTask = new BukkitRunnable() {
             @Override
             public void run() {
-                spawnChickens(plugin.getConfig().getInt("game-settings.chickens-per-spawn-wave", 1));
+                int baseSpawnCount = plugin.getConfig().getInt("game-settings.chickens-per-spawn-wave", 1);
+                int adjustedSpawnCount = (int) Math.max(1, baseSpawnCount * currentSpawnRateMultiplier);
+                spawnChickens(adjustedSpawnCount);
             }
         }.runTaskTimer(plugin, spawnIntervalTicks, spawnIntervalTicks);
 
@@ -123,6 +134,9 @@ public class GameInstance {
     }
 
     public void stop(boolean timedOut) {
+        if (phaseManager != null) {
+            phaseManager.stop();
+        }
         if (chickenSpawnerTask != null) {
             chickenSpawnerTask.cancel();
             chickenSpawnerTask = null;
@@ -190,7 +204,7 @@ public class GameInstance {
                                   .normalize();
                 
                 // Determine the level of panic
-                double speed = CHICKEN_ESCAPE_SPEED;
+                double speed = CHICKEN_ESCAPE_SPEED * currentSpeedMultiplier; // Apply phase speed multiplier
                 boolean isPanic = closestDistance < PANIC_RADIUS;
                 boolean isExtremePanic = closestDistance < EXTREME_PANIC_RADIUS;
                 
@@ -511,5 +525,30 @@ public class GameInstance {
 
     public boolean isGoldenChicken(Chicken chicken) {
         return chicken.hasMetadata(GOLDEN_CHICKEN_METADATA_KEY) && activeChickens.contains(chicken.getUniqueId());
+    }
+    
+    // Phase system methods
+    public void setPhaseMultipliers(double speedMultiplier, double spawnRateMultiplier) {
+        this.currentSpeedMultiplier = speedMultiplier;
+        this.currentSpawnRateMultiplier = spawnRateMultiplier;
+    }
+    
+    public double getCurrentSpeedMultiplier() {
+        return currentSpeedMultiplier;
+    }
+    
+    public double getCurrentSpawnRateMultiplier() {
+        return currentSpawnRateMultiplier;
+    }
+    
+    public PhaseManager getPhaseManager() {
+        return phaseManager;
+    }
+    
+    public void checkSpeedBoost(Player player) {
+        if (phaseManager != null) {
+            int catches = plugin.getPlayerStatsManager().getChickensCaught(player.getUniqueId());
+            phaseManager.checkSpeedBoost(player, catches);
+        }
     }
 }
