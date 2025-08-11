@@ -71,6 +71,8 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                 return handleReloadCommand(sender);
             case "start":
                 return handleStartCommand(sender, args);
+            case "open":
+                return handleOpenCommand(sender, args);
             case "stop":
                 return handleStopCommand(sender, args);
             case "points": // Show player points
@@ -249,6 +251,33 @@ public class CommandManager implements CommandExecutor, TabCompleter {
             }
         }
         plugin.getGameManager().startGame(regionName, duration, sender);
+        return true;
+    }
+
+    private boolean handleOpenCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("chickenhunt.admin.start")) { // reuse start permission
+            sender.sendMessage(getMsg("no_permission", null));
+            return true;
+        }
+        if (args.length < 2) {
+            sender.sendMessage(ChatColor.RED + "Usage: /ch open <region> [duration]");
+            return true;
+        }
+        String regionName = args[1];
+        int duration = 0; // 0 = infinite
+        if (args.length > 2) {
+            try {
+                duration = Integer.parseInt(args[2]);
+                if (duration < 0) {
+                    sender.sendMessage(getMsg("invalid_duration", null));
+                    return true;
+                }
+            } catch (NumberFormatException e) {
+                sender.sendMessage(getMsg("invalid_duration_format", null));
+                return true;
+            }
+        }
+        plugin.getGameManager().openGame(regionName, duration, sender);
         return true;
     }
 
@@ -534,7 +563,7 @@ public class CommandManager implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            List<String> subCommands = new ArrayList<>(Arrays.asList("wand", "create", "delete", "list", "start", "stop", "reload", "help", "points", "top", "status", "join", "leave", "lobby", "forcestart", "forcejoin"));
+            List<String> subCommands = new ArrayList<>(Arrays.asList("wand", "create", "delete", "list", "start", "open", "stop", "reload", "help", "points", "top", "status", "join", "leave", "lobby", "forcestart", "forcejoin"));
             return subCommands.stream()
                     .filter(s -> s.startsWith(args[0].toLowerCase()))
                     .filter(s -> {
@@ -543,6 +572,7 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                         if (s.equals("delete") && !sender.hasPermission("chickenhunt.admin.delete")) return false;
                         if (s.equals("list") && !sender.hasPermission("chickenhunt.admin.list")) return false;
                         if (s.equals("start") && !sender.hasPermission("chickenhunt.admin.start")) return false;
+                        if (s.equals("open") && !sender.hasPermission("chickenhunt.admin.start")) return false;
                         if (s.equals("stop") && !sender.hasPermission("chickenhunt.admin.stop")) return false;
                         if (s.equals("reload") && !sender.hasPermission("chickenhunt.admin.reload")) return false;
                         if (s.equals("points") && !sender.hasPermission("chickenhunt.player.points")) return false;
@@ -560,7 +590,7 @@ public class CommandManager implements CommandExecutor, TabCompleter {
             String subCommand = args[0].toLowerCase();
             if (subCommand.equals("create")) {
                 return Collections.singletonList("<regionName>");
-            } else if (subCommand.equals("delete") || subCommand.equals("start") || subCommand.equals("stop") || subCommand.equals("status")) {
+            } else if (subCommand.equals("delete") || subCommand.equals("start") || subCommand.equals("open") || subCommand.equals("stop") || subCommand.equals("status")) {
                 return plugin.getRegionManager().getRegionNames().stream()
                         .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
@@ -757,25 +787,19 @@ public class CommandManager implements CommandExecutor, TabCompleter {
             sender.sendMessage(getMsg("player_only_command", null));
             return true;
         }
-        
         Player player = (Player) sender;
         if (!player.hasPermission("chickenhunt.admin.forcestart")) {
             player.sendMessage(getMsg("no_permission", null));
             return true;
         }
-        
         Lobby lobby = plugin.getLobbyManager().getPlayerLobby(player);
         if (lobby == null) {
             player.sendMessage(ChatColor.RED + "Anda tidak berada di lobby!");
             return true;
         }
-        
-        if (!lobby.canForceStart()) {
-            player.sendMessage(ChatColor.RED + "Force start tidak tersedia! Tunggu 5 detik setelah countdown dimulai.");
-            return true;
-        }
-        
+        // Force start unconditionally now
         lobby.forceStart();
+        player.sendMessage(ChatColor.GREEN + "Force start dijalankan.");
         return true;
     }
     

@@ -122,10 +122,10 @@ messages:
 
 # Game Settings
 game-settings:
-  initial-chickens-per-region: 5
-  max-chickens-per-region: 20
-  chicken-spawn-interval-seconds: 10 # How often new spawn waves appear
-  chickens-per-spawn-wave: 1 # How many chickens spawn per wave
+  initial-chickens-per-region: 10  # Increased from 5 to raise baseline
+  max-chickens-per-region: 120     # Increased to avoid early cap with higher spawn rate
+  chicken-spawn-interval-seconds: 5 # Was 10; 300s / 5s = 60 waves per 5-minute match
+  chickens-per-spawn-wave: 4       # Was 1; 60 waves * 4 + initial 10 ≈ 250 total potential spawns
   chicken-name: "&6Special Chicken" # Special chicken name
   catch-cooldown-seconds: 1.5  # Cooldown between chicken catches
   points-per-catch: 1 # Points earned for regular chicken catch
@@ -195,16 +195,15 @@ chicken-head-item:
 # (Bagian ini sudah digabungkan ke dalam messages di atas)
 # Scoreboard Settings
 scoreboard:
-  title: "&6&lChicken Hunt"
+  title: "&6&lChicken Hunt &eEscadia"
   lines:
-    - "&7Region: &f%region%"
-    - "&7Time left: &f%time_left%"
+    - "&fRegion : &e%region%"
+    - "&fTime Left : &e%time_left%"
     - ""
-    - "&7Your Points: &f%points%"
-    - "&7Chickens Caught: &f%caught%"
+    - "&fYour Points : &a%points%"
+    - "&fChicken Caught : &a%caught%"
     - ""
-    - "&7Top Player: &f%top_player%"
-    - "&f%top_points% &7points"
+    - "&ePlay.escadia.id"
   update-interval-ticks: 20 # Update scoreboard every second
 
 # Effect Settings

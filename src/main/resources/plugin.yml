@@ -45,7 +45,7 @@ permissions:
     description: Allows use of /ch list.
     default: op
   chickenhunt.admin.start:
-    description: Allows use of /ch start.
+    description: Allows use of /ch start and /ch open.
     default: op
   chickenhunt.admin.stop:
     description: Allows use of /ch stop.

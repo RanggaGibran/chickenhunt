@@ -109,6 +109,38 @@ public class GameManager {
         return true;
     }
 
+    public boolean openGame(String regionName, int durationSeconds, CommandSender starter) {
+        Region region = plugin.getRegionManager().getRegion(regionName);
+        if (region == null) {
+            if (starter != null) starter.sendMessage(plugin.getMessage("region_not_found", Map.of("region", regionName)));
+            return false;
+        }
+        if (activeGames.containsKey(regionName.toLowerCase())) {
+            if (starter != null) starter.sendMessage(plugin.getMessage("game_already_started", Map.of("region", regionName)));
+            return false;
+        }
+        GameInstance gameInstance = new GameInstance(plugin, this, region, durationSeconds, scoreboardHandler);
+        activeGames.put(regionName.toLowerCase(), gameInstance);
+        gameInstance.start();
+        if (starter != null) {
+            Map<String, String> placeholders = new HashMap<>();
+            placeholders.put("region", regionName);
+            if (durationSeconds > 0) {
+                placeholders.put("duration", String.valueOf(durationSeconds));
+                starter.sendMessage(plugin.getMessage("game_started_duration", placeholders));
+            } else {
+                starter.sendMessage(plugin.getMessage("game_started", placeholders));
+            }
+        }
+        // Create scoreboards for players already inside region
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (region.isInRegion(player.getLocation())) {
+                scoreboardHandler.createScoreboard(player, gameInstance);
+            }
+        }
+        return true;
+    }
+
     public boolean stopGame(String regionName, CommandSender stopper) {
         return stopGame(regionName, false, stopper);
     }

@@ -195,40 +195,26 @@ public class Lobby {
     }
     
     public void forceStart() {
-        if (!canForceStart || state != LobbyState.COUNTDOWN) {
+        // Allow force start in WAITING or COUNTDOWN (or STARTING safeguard), only block if already IN_GAME
+        if (state == LobbyState.IN_GAME) {
             return;
         }
-        
         broadcastMessage(ChatColor.GREEN + "Game dimulai paksa!");
         startGame();
     }
-    
+
     private void startGame() {
         if (state == LobbyState.IN_GAME) {
             return;
         }
-        
         state = LobbyState.STARTING;
-        
         // Cancel any running tasks
-        if (countdownTask != null) {
-            countdownTask.cancel();
-            countdownTask = null;
-        }
-        
-        if (forceStartTask != null) {
-            forceStartTask.cancel();
-            forceStartTask = null;
-        }
-        
+        if (countdownTask != null) { countdownTask.cancel(); countdownTask = null; }
+        if (forceStartTask != null) { forceStartTask.cancel(); forceStartTask = null; }
         broadcastMessage(ChatColor.GREEN + "Game dimulai! Selamat bermain!");
-        
-        // Start the actual game
-        plugin.getGameManager().startGame(region.getName(), 300, null); // 5 minutes default
-        
+        // Start actual game instantly (skip GameManager countdown) using openGame
+        plugin.getGameManager().openGame(region.getName(), 300, null); // default 5 minutes
         state = LobbyState.IN_GAME;
-        
-        // Teleport players to region center
         Location centerLocation = getCenterLocation();
         for (UUID playerId : new HashSet<>(players)) {
             Player player = Bukkit.getPlayer(playerId);
