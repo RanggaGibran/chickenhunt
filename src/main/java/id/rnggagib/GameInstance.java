@@ -218,9 +218,10 @@ public class GameInstance {
                     speed *= 0.7; 
                 }
                 
-                // Golden chickens are faster
+                // Golden chickens are faster (configurable multiplier, default 2.0x)
                 if (isGolden) {
-                    speed *= 1.3;
+                    double goldenMultiplier = plugin.getConfig().getDouble("game-settings.golden-chicken.speed-multiplier", 2.0);
+                    speed *= goldenMultiplier;
                 }
                 
                 // Make sure Y velocity is reasonable

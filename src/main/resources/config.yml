@@ -16,6 +16,8 @@ messages:
   plugin_reloaded: "&aChickenHunt configuration and regions reloaded."
   wand_lore_pos1: "&7Left-click to set position 1"
   wand_lore_pos2: "&7Right-click to set position 2"
+  setlobby_success: "&aLobby spawn berhasil diset!"
+  lobby_spawn_not_set: "&cLobby spawn belum diset. Gunakan /ch setlobby di lokasi yang diinginkan."
   
   usage_create: "&cUsage: /ch create <regionName>" 
   usage_delete: "&cUsage: /ch delete <regionName>" 
@@ -177,8 +179,13 @@ game-settings:
     enabled: true
     name: "&eGolden Chicken"
     spawn-chance: 0.15
-    points-value: 2 # Points earned for golden chicken catch
-    texture_value: "c414822a85c5e7073e207da133ce226859b0f74f238d584c3d3a42f223bb16bf"
+  # Extra poin di atas points-per-catch biasa (default 2)
+  extra-points: 2
+  # Kecepatan gerak golden chicken relatif terhadap chicken biasa (default 2.0)
+  speed-multiplier: 2.0
+  # (Deprecated) points-value masih didukung untuk kompatibilitas lama
+  points-value: 2 # Legacy key (ignored jika extra-points ada)
+  texture_value: "c414822a85c5e7073e207da133ce226859b0f74f238d584c3d3a42f223bb16bf"
 
 # Item Kepala Ayam
 chicken-head-item:

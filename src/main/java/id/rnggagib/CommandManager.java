@@ -1,6 +1,5 @@
 package id.rnggagib;
 
-import net.milkbowl.vault.economy.EconomyResponse; 
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -12,7 +11,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
@@ -30,6 +28,8 @@ public class CommandManager implements CommandExecutor, TabCompleter {
     private final ChickenHunt plugin;
     private String WAND_ITEM_NAME;
     private Material WAND_MATERIAL;
+    // Single region mode constant name
+    private static final String SINGLE_REGION_NAME = "default";
 
     public CommandManager(ChickenHunt plugin) {
         this.plugin = plugin;
@@ -59,6 +59,8 @@ public class CommandManager implements CommandExecutor, TabCompleter {
         String subCommand = args[0].toLowerCase();
 
         switch (subCommand) {
+            case "setlobby":
+                return handleSetLobbyCommand(sender);
             case "wand":
                 return handleWandCommand(sender);
             case "create":
@@ -751,13 +753,36 @@ public class CommandManager implements CommandExecutor, TabCompleter {
             lobby = plugin.getLobbyManager().getLobby(regionName);
         }
         
-        // Try to join the lobby
+        // Teleport to lobby spawn (if set) before adding
+        Location lobbySpawn = plugin.getLobbyManager().getLobbySpawnLocation();
+        if (lobbySpawn != null) {
+            player.teleport(lobbySpawn);
+        } else {
+            player.sendMessage(getMsg("lobby_spawn_not_set", null));
+        }
+
+        // Try to join the lobby AFTER teleport
         if (lobby.addPlayer(player)) {
             player.sendMessage(ChatColor.GREEN + "Berhasil bergabung ke lobby region " + regionName + "!");
         } else {
             player.sendMessage(ChatColor.RED + "Gagal bergabung ke lobby! Lobby mungkin penuh atau game sedang berlangsung.");
         }
         
+        return true;
+    }
+
+    private boolean handleSetLobbyCommand(CommandSender sender) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(getMsg("player_only_command", null));
+            return true;
+        }
+        Player player = (Player) sender;
+        if (!player.hasPermission("chickenhunt.admin.setlobby")) {
+            player.sendMessage(getMsg("no_permission", null));
+            return true;
+        }
+    plugin.getLobbyManager().setLobbySpawnLocation(player.getLocation());
+    player.sendMessage(getMsg("setlobby_success", null));
         return true;
     }
     
@@ -787,19 +812,25 @@ public class CommandManager implements CommandExecutor, TabCompleter {
             sender.sendMessage(getMsg("player_only_command", null));
             return true;
         }
+        
         Player player = (Player) sender;
         if (!player.hasPermission("chickenhunt.admin.forcestart")) {
             player.sendMessage(getMsg("no_permission", null));
             return true;
         }
+        
         Lobby lobby = plugin.getLobbyManager().getPlayerLobby(player);
         if (lobby == null) {
             player.sendMessage(ChatColor.RED + "Anda tidak berada di lobby!");
             return true;
         }
-        // Force start unconditionally now
+        
+        if (!lobby.canForceStart()) {
+            player.sendMessage(ChatColor.RED + "Force start tidak tersedia! Tunggu 5 detik setelah countdown dimulai.");
+            return true;
+        }
+        
         lobby.forceStart();
-        player.sendMessage(ChatColor.GREEN + "Force start dijalankan.");
         return true;
     }
     
@@ -816,11 +847,11 @@ public class CommandManager implements CommandExecutor, TabCompleter {
         }
         
         if (args.length < 2) {
-            // Show current lobby info
+            // Show current lobby info (single region mode)
             Lobby lobby = plugin.getLobbyManager().getPlayerLobby(player);
             if (lobby == null) {
                 player.sendMessage(ChatColor.RED + "Anda tidak berada di lobby!");
-                player.sendMessage(ChatColor.YELLOW + "Gunakan /ch join <region> untuk bergabung ke lobby.");
+                player.sendMessage(ChatColor.YELLOW + "Gunakan /ch join untuk bergabung ke lobby.");
                 return true;
             }
             
@@ -858,14 +889,12 @@ public class CommandManager implements CommandExecutor, TabCompleter {
             sender.sendMessage(getMsg("no_permission", null));
             return true;
         }
-        
-        if (args.length < 3) {
-            sender.sendMessage(getMsg("usage_forcejoin", null));
+        if (args.length < 2) {
+            sender.sendMessage(ChatColor.RED + "Usage: /ch forcejoin <player>");
             return true;
         }
-        
         String playerName = args[1];
-        String regionName = args[2];
+        String regionName = SINGLE_REGION_NAME;
         
         Player target = Bukkit.getPlayer(playerName);
         if (target == null) {
@@ -875,16 +904,14 @@ public class CommandManager implements CommandExecutor, TabCompleter {
             return true;
         }
         
-        // Check if region exists
+        // In single region mode, region must exist as default
         if (!plugin.getRegionManager().regionExists(regionName)) {
-            Map<String, String> placeholders = new HashMap<>();
-            placeholders.put("region", regionName);
-            sender.sendMessage(getMsg("region_not_found", placeholders));
+            sender.sendMessage(ChatColor.RED + "Region default belum dibuat. Gunakan /ch create setelah seleksi.");
             return true;
         }
         
         // Check if there's an active game in the region
-        if (!plugin.getGameManager().isGameActive(regionName)) {
+    if (!plugin.getGameManager().isGameActive(regionName)) {
             Map<String, String> placeholders = new HashMap<>();
             placeholders.put("region", regionName);
             sender.sendMessage(plugin.getMessage("game_not_started", placeholders));

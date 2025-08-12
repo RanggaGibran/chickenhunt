@@ -81,13 +81,15 @@ public class GameListener implements Listener {
             boolean isGolden = gameInstance.isGoldenChicken(chicken);
             String message;
             int pointsEarned;
-            
+
+            int basePoints = plugin.getConfig().getInt("game-settings.points-per-catch", 1);
             if (isGolden) {
-                pointsEarned = plugin.getConfig().getInt("game-settings.golden-chicken.points-value", 2);  // Changed default from 5 to 2
-                message = ChatColor.GOLD + "+" + pointsEarned + " Points!";
+                int extra = plugin.getConfig().getInt("game-settings.golden-chicken.extra-points", 2); // tambahan 2 poin
+                pointsEarned = basePoints + extra;
+                message = ChatColor.GOLD + "+" + pointsEarned + " Points (Golden)!";
                 playGoldenCatchEffects(player, chicken.getLocation().add(0, 0.5, 0));
             } else {
-                pointsEarned = plugin.getConfig().getInt("game-settings.points-per-catch", 1);
+                pointsEarned = basePoints;
                 message = ChatColor.GREEN + "+" + pointsEarned + " Points!";
                 playCatchEffects(player, chicken.getLocation().add(0, 0.5, 0));
             }

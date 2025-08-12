@@ -2,7 +2,6 @@ package id.rnggagib;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -30,6 +29,8 @@ public class PlayerStatsManager {
     private final Map<UUID, Double> moneyEarned = new HashMap<>();
     private final Map<UUID, Integer> pointsEarned = new HashMap<>(); // New points map
     private final Map<UUID, Set<Integer>> rewardsGiven = new HashMap<>();
+    // Track which speed milestones have already given potion rewards (so players don't get duplicates)
+    private final Map<UUID, Set<Integer>> speedRewardsGiven = new HashMap<>();
 
     public PlayerStatsManager(ChickenHunt plugin) {
         this.plugin = plugin;
@@ -57,6 +58,7 @@ public class PlayerStatsManager {
         moneyEarned.clear();
         pointsEarned.clear();
         rewardsGiven.clear();
+    speedRewardsGiven.clear();
 
         ConfigurationSection caughtSection = statsConfig.getConfigurationSection("chickensCaught");
         if (caughtSection != null) {
@@ -112,6 +114,28 @@ public class PlayerStatsManager {
                 }
             }
         }
+
+        // Load speed reward milestones section (optional)
+        ConfigurationSection speedRewardsSection = statsConfig.getConfigurationSection("speedRewardsGiven");
+        if (speedRewardsSection != null) {
+            for (String uuidString : speedRewardsSection.getKeys(false)) {
+                try {
+                    UUID uuid = UUID.fromString(uuidString);
+                    List<?> list = speedRewardsSection.getList(uuidString);
+                    Set<Integer> milestones = new HashSet<>();
+                    if (list != null) {
+                        for (Object o : list) {
+                            if (o instanceof Integer) {
+                                milestones.add((Integer) o);
+                            }
+                        }
+                    }
+                    speedRewardsGiven.put(uuid, milestones);
+                } catch (IllegalArgumentException e) {
+                    // skip invalid
+                }
+            }
+        }
     }
 
     public void saveStats() {
@@ -119,6 +143,7 @@ public class PlayerStatsManager {
         statsConfig.set("moneyEarned", null);
         statsConfig.set("pointsEarned", null);
         statsConfig.set("rewardsGiven", null);
+    statsConfig.set("speedRewardsGiven", null);
 
         chickensCaught.forEach((uuid, count) -> statsConfig.set("chickensCaught." + uuid.toString(), count));
         moneyEarned.forEach((uuid, amount) -> statsConfig.set("moneyEarned." + uuid.toString(), amount));
@@ -126,6 +151,10 @@ public class PlayerStatsManager {
         
         for (Map.Entry<UUID, Set<Integer>> entry : rewardsGiven.entrySet()) {
             statsConfig.set("rewardsGiven." + entry.getKey().toString(), new ArrayList<>(entry.getValue()));
+        }
+
+        for (Map.Entry<UUID, Set<Integer>> entry : speedRewardsGiven.entrySet()) {
+            statsConfig.set("speedRewardsGiven." + entry.getKey().toString(), new ArrayList<>(entry.getValue()));
         }
 
         try {
@@ -144,10 +173,63 @@ public class PlayerStatsManager {
         Player player = Bukkit.getPlayer(playerId);
         if (player != null && player.isOnline()) {
             checkAndGiveRewards(player, newTotal);
+        awardSpeedMilestones(player, previousCaught, newTotal);
             
             // Update scoreboards to reflect the new chicken count
             updateScoreboards();
         }
+    }
+
+    /**
+     * Awards potion speed effects at specific chicken catch milestones:
+     * 10: Speed I 10s, 25: Speed I 15s, 50: Speed I 20s, 100: Speed II 30s, 200: Speed II 60s
+     */
+    private void awardSpeedMilestones(Player player, int previousTotal, int newTotal) {
+    UUID uuid = player.getUniqueId();
+    Set<Integer> given = speedRewardsGiven.computeIfAbsent(uuid, k -> new HashSet<>());
+
+    // milestone -> [amplifier(level-1), durationSeconds]
+    int[][] milestones = new int[][]{
+        {10, 0, 10},
+        {25, 0, 15},
+        {50, 0, 20},
+        {100, 1, 30},
+        {200, 1, 60}
+    };
+
+    for (int[] m : milestones) {
+        int count = m[0];
+        int amplifier = m[1];
+        int seconds = m[2];
+        if (previousTotal < count && newTotal >= count && !given.contains(count)) {
+        // Give effect
+        try {
+            org.bukkit.potion.PotionEffect effect = new org.bukkit.potion.PotionEffect(
+                org.bukkit.potion.PotionEffectType.SPEED,
+                seconds * 20,
+                amplifier,
+                false,
+                true,
+                true
+            );
+            player.addPotionEffect(effect);
+        } catch (Exception ignored) {}
+
+        given.add(count);
+
+        String msg = ChatColor.translateAlternateColorCodes('&',
+            "&bBonus Speed &7(\u2708) &fkarena telah menangkap &e" + count + " &fayam!&7 (" +
+                (amplifier + 1) + "&fx &b" + seconds + "s)");
+        player.sendMessage(msg);
+        player.sendTitle(
+            ChatColor.translateAlternateColorCodes('&', "&b&lSPEED BOOST!"),
+            ChatColor.translateAlternateColorCodes('&', "&fMenangkap &e" + count + " &fayam"),
+            10, 40, 10
+        );
+        }
+    }
+    // Persist updated milestone grants
+    saveStats();
     }
     
     private void checkAndGiveRewards(Player player, int newTotal) {

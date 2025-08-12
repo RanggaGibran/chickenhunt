@@ -92,3 +92,6 @@ permissions:
   chickenhunt.admin.forcejoin:
     description: Allows use of /ch forcejoin.
     default: op
+  chickenhunt.admin.setlobby:
+    description: Allows use of /ch setlobby.
+    default: op

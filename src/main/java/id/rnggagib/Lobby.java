@@ -195,8 +195,8 @@ public class Lobby {
     }
     
     public void forceStart() {
-        // Allow force start in WAITING or COUNTDOWN (or STARTING safeguard), only block if already IN_GAME
-        if (state == LobbyState.IN_GAME) {
+        // Allow force start from WAITING or COUNTDOWN as long as at least 1 player
+        if (players.isEmpty() || state == LobbyState.IN_GAME) {
             return;
         }
         broadcastMessage(ChatColor.GREEN + "Game dimulai paksa!");
@@ -208,12 +208,11 @@ public class Lobby {
             return;
         }
         state = LobbyState.STARTING;
-        // Cancel any running tasks
         if (countdownTask != null) { countdownTask.cancel(); countdownTask = null; }
         if (forceStartTask != null) { forceStartTask.cancel(); forceStartTask = null; }
         broadcastMessage(ChatColor.GREEN + "Game dimulai! Selamat bermain!");
-        // Start actual game instantly (skip GameManager countdown) using openGame
-        plugin.getGameManager().openGame(region.getName(), 300, null); // default 5 minutes
+        // Use openGame for immediate start (no additional countdown from GameManager.startGame)
+        plugin.getGameManager().openGame(region.getName(), 300, null);
         state = LobbyState.IN_GAME;
         Location centerLocation = getCenterLocation();
         for (UUID playerId : new HashSet<>(players)) {
