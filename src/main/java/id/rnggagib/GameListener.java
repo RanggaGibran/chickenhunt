@@ -9,6 +9,8 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Chicken;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
@@ -79,15 +81,26 @@ public class GameListener implements Listener {
             gameInstance.removeChicken(chicken);
 
             boolean isGolden = gameInstance.isGoldenChicken(chicken);
+            boolean isBlack = gameInstance.isBlackChicken(chicken);
             String message;
             int pointsEarned;
 
             int basePoints = plugin.getConfig().getInt("game-settings.points-per-catch", 1);
             if (isGolden) {
-                int extra = plugin.getConfig().getInt("game-settings.golden-chicken.extra-points", 2); // tambahan 2 poin
+                int extra = plugin.getConfig().getInt("game-settings.golden-chicken.extra-points", 5); // default +5 poin
                 pointsEarned = basePoints + extra;
                 message = ChatColor.GOLD + "+" + pointsEarned + " Points (Golden)!";
                 playGoldenCatchEffects(player, chicken.getLocation().add(0, 0.5, 0));
+            } else if (isBlack) {
+                int penalty = plugin.getConfig().getInt("game-settings.black-chicken.penalty-points", 2);
+                pointsEarned = Math.max(0, basePoints - penalty); // ensure not negative points awarded; overall total adjust below
+                // Apply slowness effect
+                int slownessSeconds = plugin.getConfig().getInt("game-settings.black-chicken.slowness-seconds", 3);
+                if (slownessSeconds > 0) {
+                    player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, slownessSeconds * 20, 0, true, true, true));
+                }
+                message = ChatColor.DARK_GRAY + "-" + penalty + " Points (Ayam Hitam)!";
+                playBlackCatchEffects(player, chicken.getLocation().add(0, 0.5, 0));
             } else {
                 pointsEarned = basePoints;
                 message = ChatColor.GREEN + "+" + pointsEarned + " Points!";
@@ -96,7 +109,12 @@ public class GameListener implements Listener {
             
             player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new ComponentBuilder(message).create());
             
-            plugin.getPlayerStatsManager().addPoints(player.getUniqueId(), pointsEarned);
+            // For black chicken, subtract points directly
+            if (isBlack) {
+                plugin.getPlayerStatsManager().addPoints(player.getUniqueId(), -plugin.getConfig().getInt("game-settings.black-chicken.penalty-points", 2));
+            } else {
+                plugin.getPlayerStatsManager().addPoints(player.getUniqueId(), pointsEarned);
+            }
             plugin.getPlayerStatsManager().incrementChickensCaught(player.getUniqueId(), 1);
             
             // Check for speed boost trigger
@@ -188,6 +206,14 @@ public class GameListener implements Listener {
         player.getWorld().spawnParticle(Particle.ENTITY_EFFECT, location, 50, 0.3, 0.3, 0.3, 0.1, Color.fromRGB(255, 215, 0));
         player.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, location, 30, 0.3, 0.3, 0.3, 0.2);
         player.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, location, 15, 0.3, 0.3, 0.3, 0.1);
+    }
+
+    private void playBlackCatchEffects(Player player, Location location) {
+        // Effects for black chicken
+        player.playSound(location, Sound.ENTITY_WITHER_HURT, 0.8f, 0.8f);
+        player.playSound(location, Sound.BLOCK_FIRE_EXTINGUISH, 0.7f, 1.0f);
+        player.getWorld().spawnParticle(Particle.SMOKE, location, 40, 0.3, 0.4, 0.3, 0.05);
+        player.getWorld().spawnParticle(Particle.ASH, location, 20, 0.3, 0.4, 0.3, 0.02);
     }
 
     @EventHandler

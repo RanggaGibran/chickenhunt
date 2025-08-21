@@ -177,15 +177,26 @@ game-settings:
   # Golden Chicken Settings
   golden-chicken:
     enabled: true
-    name: "&eGolden Chicken"
-    spawn-chance: 0.15
-  # Extra poin di atas points-per-catch biasa (default 2)
-  extra-points: 2
-  # Kecepatan gerak golden chicken relatif terhadap chicken biasa (default 2.0)
-  speed-multiplier: 2.0
-  # (Deprecated) points-value masih didukung untuk kompatibilitas lama
-  points-value: 2 # Legacy key (ignored jika extra-points ada)
-  texture_value: "c414822a85c5e7073e207da133ce226859b0f74f238d584c3d3a42f223bb16bf"
+    name: "&6Ayam Emas"
+    # Lebih jarang muncul (semakin kecil semakin langka)
+    spawn-chance: 0.05
+    # Extra poin di atas points-per-catch biasa
+    extra-points: 5
+    # Kecepatan gerak golden chicken relatif terhadap chicken biasa
+    speed-multiplier: 2.0
+    # (Deprecated) points-value masih didukung untuk kompatibilitas lama
+    points-value: 5 # Legacy key (ignored jika extra-points ada)
+    texture_value: "c414822a85c5e7073e207da133ce226859b0f74f238d584c3d3a42f223bb16bf"
+
+  # Black Chicken Settings
+  black-chicken:
+    enabled: true
+    name: "&0Ayam Hitam"
+    spawn-chance: 0.10
+    # Poin yang dikurangi saat menangkap Ayam Hitam
+    penalty-points: 2
+    # Efek slowness pada pemain dalam detik
+    slowness-seconds: 3
 
 # Item Kepala Ayam
 chicken-head-item:
@@ -222,12 +233,12 @@ effects:
       volume: 1.0
       pitch: 1.0
     particle:
-      name: "SMOKE_NORMAL"
-      count: 10
-      offset_x: 0.2
-      offset_y: 0.3
-      offset_z: 0.2
-      speed: 0.05
+  name: "SMOKE"
+  count: 10
+  offset_x: 0.2
+  offset_y: 0.3
+  offset_z: 0.2
+  speed: 0.05
       # data: ""      # Data tambahan untuk partikel tertentu (misalnya REDSTONE: "255,0,0" untuk warna merah)
 
 # Auto-scheduler Settings

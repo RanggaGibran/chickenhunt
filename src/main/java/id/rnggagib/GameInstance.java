@@ -41,6 +41,7 @@ public class GameInstance {
 
     public static final String CHICKEN_METADATA_KEY = "ChickenHuntChicken";
     public static final String GOLDEN_CHICKEN_METADATA_KEY = "ChickenHuntGoldenChicken";
+    public static final String BLACK_CHICKEN_METADATA_KEY = "ChickenHuntBlackChicken";
     private static final int MAX_SPAWN_ATTEMPTS_PER_CHICKEN = 10;
     private static final double CHICKEN_ESCAPE_SPEED = 0.4;  // Base escape speed 
     private static final double DETECTION_RADIUS = 10.0;  // Detection radius
@@ -193,8 +194,9 @@ public class GameInstance {
                 }
             }
             
-            // Is this a golden chicken?
+            // Is this a golden/black chicken?
             boolean isGolden = chicken.hasMetadata(GOLDEN_CHICKEN_METADATA_KEY);
+            boolean isBlack = chicken.hasMetadata(BLACK_CHICKEN_METADATA_KEY);
             
             // Only influence movement if player is within detection radius
             if (closestPlayer != null && closestDistance < DETECTION_RADIUS) {
@@ -280,7 +282,7 @@ public class GameInstance {
                 // Add visual effects based on panic level
                 if (isExtremePanic) {
                     // Extreme panic effect
-                    Particle effect = isGolden ? Particle.FLAME : Particle.CLOUD;
+                    Particle effect = isGolden ? Particle.FLAME : (isBlack ? Particle.SMOKE : Particle.CLOUD);
                     chicken.getWorld().spawnParticle(
                         effect,
                         chicken.getLocation().add(0, 0.5, 0),
@@ -297,7 +299,7 @@ public class GameInstance {
                     }
                 } else if (isPanic) {
                     // Regular panic effect
-                    Particle effect = isGolden ? Particle.FLAME : Particle.CLOUD;
+                    Particle effect = isGolden ? Particle.FLAME : (isBlack ? Particle.SMOKE : Particle.CLOUD);
                     chicken.getWorld().spawnParticle(
                         effect,
                         chicken.getLocation().add(0, 0.5, 0),
@@ -318,10 +320,16 @@ public class GameInstance {
                     chicken.setVelocity(chicken.getVelocity().add(smallRandom));
                 }
                 
-                // Occasional ambient effects for golden chickens
+                // Occasional ambient effects for special chickens
                 if (isGolden && Math.random() < 0.05) {
                     chicken.getWorld().spawnParticle(
                         Particle.FLAME,
+                        chicken.getLocation().add(0, 0.5, 0),
+                        1, 0.2, 0.2, 0.2, 0
+                    );
+                } else if (isBlack && Math.random() < 0.05) {
+                    chicken.getWorld().spawnParticle(
+                        Particle.SMOKE,
                         chicken.getLocation().add(0, 0.5, 0),
                         1, 0.2, 0.2, 0.2, 0
                     );
@@ -371,8 +379,10 @@ public class GameInstance {
 
         int maxChickensInRegion = plugin.getConfig().getInt("game-settings.max-chickens-per-region", 20);
         Random random = ThreadLocalRandom.current();
-        boolean goldenChickenEnabled = plugin.getConfig().getBoolean("game-settings.golden-chicken.enabled", true);
-        double goldenChickenChance = plugin.getConfig().getDouble("game-settings.golden-chicken.spawn-chance", 0.15);
+    boolean goldenChickenEnabled = plugin.getConfig().getBoolean("game-settings.golden-chicken.enabled", true);
+    double goldenChickenChance = plugin.getConfig().getDouble("game-settings.golden-chicken.spawn-chance", 0.15);
+    boolean blackChickenEnabled = plugin.getConfig().getBoolean("game-settings.black-chicken.enabled", true);
+    double blackChickenChance = plugin.getConfig().getDouble("game-settings.black-chicken.spawn-chance", 0.10);
 
         for (int i = 0; i < count; i++) {
             if (activeChickens.size() >= maxChickensInRegion) {
@@ -400,14 +410,27 @@ public class GameInstance {
                 continue; // Skip this chicken if no safe spot found
             }
 
-            // Determine if this chicken should be golden
-            boolean isGolden = goldenChickenEnabled && random.nextDouble() < goldenChickenChance;
+            // Determine type using single roll so they are mutually exclusive
+            double roll = random.nextDouble();
+            boolean isBlack = blackChickenEnabled && roll < blackChickenChance;
+            boolean isGolden = !isBlack && goldenChickenEnabled && roll < (blackChickenChance + goldenChickenChance);
             
             Chicken chicken = (Chicken) world.spawnEntity(spawnLoc, EntityType.CHICKEN);
             chicken.setMetadata(CHICKEN_METADATA_KEY, new FixedMetadataValue(plugin, true));
             chicken.setAI(true); // Ensure AI is enabled from the start
             
-            if (isGolden) {
+            if (isBlack) {
+                String blackChickenName = plugin.getConfig().getString("game-settings.black-chicken.name", "&0Ayam Hitam");
+                chicken.setCustomName(ChatColor.translateAlternateColorCodes('&', blackChickenName));
+                chicken.setMetadata(BLACK_CHICKEN_METADATA_KEY, new FixedMetadataValue(plugin, true));
+
+                // Smoke particles to indicate black chicken
+                chicken.getWorld().spawnParticle(
+                    Particle.SMOKE,
+                    chicken.getLocation().add(0, 0.5, 0),
+                    20, 0.3, 0.3, 0.3, 0.05
+                );
+            } else if (isGolden) {
                 String goldenChickenName = plugin.getConfig().getString("game-settings.golden-chicken.name", "&eAyam Emas");
                 chicken.setCustomName(ChatColor.translateAlternateColorCodes('&', goldenChickenName));
                 chicken.setMetadata(GOLDEN_CHICKEN_METADATA_KEY, new FixedMetadataValue(plugin, true));
@@ -526,6 +549,10 @@ public class GameInstance {
 
     public boolean isGoldenChicken(Chicken chicken) {
         return chicken.hasMetadata(GOLDEN_CHICKEN_METADATA_KEY) && activeChickens.contains(chicken.getUniqueId());
+    }
+
+    public boolean isBlackChicken(Chicken chicken) {
+        return chicken.hasMetadata(BLACK_CHICKEN_METADATA_KEY) && activeChickens.contains(chicken.getUniqueId());
     }
     
     // Phase system methods
