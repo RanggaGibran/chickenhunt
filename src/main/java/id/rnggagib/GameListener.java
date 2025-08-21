@@ -11,6 +11,11 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.event.player.PlayerItemConsumeEvent;
+import org.bukkit.event.player.PlayerFishEvent;
+import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
+import org.bukkit.entity.Snowball;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
@@ -20,6 +25,8 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.ComponentBuilder;
+import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -119,6 +126,52 @@ public class GameListener implements Listener {
             
             // Check for speed boost trigger
             gameInstance.checkSpeedBoost(player);
+
+            // Roll for power-up drop
+            maybeGiveRandomPowerup(player);
+        }
+    }
+
+    private void maybeGiveRandomPowerup(Player player) {
+        double chance = plugin.getConfig().getDouble("powerups.drop-chance", 0.15); // 15% default
+        if (Math.random() > chance) return;
+        double roll = Math.random();
+        double speedWeight = plugin.getConfig().getDouble("powerups.weights.speed-potion", 0.5);
+        double netWeight = plugin.getConfig().getDouble("powerups.weights.net-rod", 0.3);
+        double freezeWeight = plugin.getConfig().getDouble("powerups.weights.freeze-trap", 0.2);
+        double total = speedWeight + netWeight + freezeWeight;
+        double pick = roll * total;
+        if (pick < speedWeight) {
+            player.getInventory().addItem(plugin.getItemManager().createSpeedBoostPotion());
+            player.sendMessage(ChatColor.AQUA + "Kamu mendapatkan Power-Up: Speed Boost!");
+        } else if (pick < speedWeight + netWeight) {
+            player.getInventory().addItem(plugin.getItemManager().createNetRod());
+            player.sendMessage(ChatColor.YELLOW + "Kamu mendapatkan Power-Up: Jaring Besar!");
+            int removeAfter = plugin.getConfig().getInt("powerups.net-rod.duration-seconds", 20);
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    // Remove one net rod item if present
+                    ItemStack[] contents = player.getInventory().getContents();
+                    for (int i = 0; i < contents.length; i++) {
+                        ItemStack it = contents[i];
+                        if (plugin.getItemManager().isNetRod(it)) {
+                            int amt = it.getAmount();
+                            if (amt <= 1) {
+                                player.getInventory().setItem(i, null);
+                            } else {
+                                it.setAmount(amt - 1);
+                                player.getInventory().setItem(i, it);
+                            }
+                            player.sendMessage(ChatColor.RED + "Jaring Besar sudah habis waktunya!");
+                            break;
+                        }
+                    }
+                }
+            }.runTaskLater(plugin, removeAfter * 20L);
+        } else {
+            player.getInventory().addItem(plugin.getItemManager().createFreezeTrap());
+            player.sendMessage(ChatColor.BLUE + "Kamu mendapatkan Power-Up: Freeze Trap!");
         }
     }
 
@@ -154,7 +207,7 @@ public class GameListener implements Listener {
         ConfigurationSection particleConfig = effectsConfig.getConfigurationSection("particle");
         if (particleConfig != null) {
             try {
-                Particle particle = Particle.valueOf(particleConfig.getString("name", "SMOKE_NORMAL").toUpperCase());
+                Particle particle = Particle.valueOf(particleConfig.getString("name", "SMOKE").toUpperCase());
                 int count = particleConfig.getInt("count", 10);
                 double offsetX = particleConfig.getDouble("offset_x", 0.2);
                 double offsetY = particleConfig.getDouble("offset_y", 0.3);
@@ -214,6 +267,127 @@ public class GameListener implements Listener {
         player.playSound(location, Sound.BLOCK_FIRE_EXTINGUISH, 0.7f, 1.0f);
         player.getWorld().spawnParticle(Particle.SMOKE, location, 40, 0.3, 0.4, 0.3, 0.05);
         player.getWorld().spawnParticle(Particle.ASH, location, 20, 0.3, 0.4, 0.3, 0.02);
+    }
+
+    // Consume Speed Boost potion: apply Speed II for 10s
+    @EventHandler
+    public void onItemConsume(PlayerItemConsumeEvent event) {
+        Player player = event.getPlayer();
+        if (plugin.getItemManager().isSpeedBoostPotion(event.getItem())) {
+            event.setCancelled(true); // we'll consume manually
+            // Remove one matching potion from inventory
+            ItemStack[] contents = player.getInventory().getContents();
+            for (int i = 0; i < contents.length; i++) {
+                ItemStack it = contents[i];
+                if (plugin.getItemManager().isSpeedBoostPotion(it)) {
+                    int amt = it.getAmount();
+                    if (amt <= 1) {
+                        player.getInventory().setItem(i, null);
+                    } else {
+                        it.setAmount(amt - 1);
+                        player.getInventory().setItem(i, it);
+                    }
+                    break;
+                }
+            }
+            int seconds = plugin.getConfig().getInt("powerups.speed-potion.seconds", 10);
+            player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, seconds * 20, 1, true, true, true));
+            player.sendMessage(ChatColor.AQUA + "Speed II aktif " + seconds + " detik!");
+            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+        }
+    }
+
+    // Use Net Rod: on successful hook, catch all chickens in 3-block radius around hook location
+    @EventHandler
+    public void onPlayerFish(PlayerFishEvent event) {
+        if (!(event.getPlayer() instanceof Player)) return;
+        Player player = event.getPlayer();
+        if (!plugin.getItemManager().isNetRod(player.getInventory().getItemInMainHand())) return;
+        if (event.getState() != PlayerFishEvent.State.CAUGHT_ENTITY && event.getState() != PlayerFishEvent.State.IN_GROUND) return;
+        Location center = event.getHook().getLocation();
+        double radius = plugin.getConfig().getDouble("powerups.net-rod.radius", 3.0);
+        GameInstance game = plugin.getGameManager().getGameByChickenLocation(center);
+        if (game == null) return;
+        int caught = 0;
+        int goldenCaught = 0;
+        int blackCaught = 0;
+        int pointsDelta = 0;
+        int basePoints = plugin.getConfig().getInt("game-settings.points-per-catch", 1);
+        int goldenExtra = plugin.getConfig().getInt("game-settings.golden-chicken.extra-points", 5);
+        int blackPenalty = plugin.getConfig().getInt("game-settings.black-chicken.penalty-points", 2);
+        for (Entity e : center.getWorld().getNearbyEntities(center, radius, radius, radius)) {
+            if (e instanceof Chicken) {
+                Chicken ch = (Chicken) e;
+                if (game.isGameChicken(ch)) {
+                    game.removeChicken(ch);
+                    boolean isGolden = game.isGoldenChicken(ch);
+                    boolean isBlack = game.isBlackChicken(ch);
+                    if (isGolden) {
+                        pointsDelta += basePoints + goldenExtra;
+                        goldenCaught++;
+                    } else if (isBlack) {
+                        pointsDelta -= blackPenalty; // subtract penalty
+                        blackCaught++;
+                    } else {
+                        pointsDelta += basePoints;
+                    }
+                    plugin.getPlayerStatsManager().incrementChickensCaught(player.getUniqueId(), 1);
+                    caught++;
+                }
+            }
+        }
+        if (caught > 0) {
+            if (pointsDelta != 0) {
+                plugin.getPlayerStatsManager().addPoints(player.getUniqueId(), pointsDelta);
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append(ChatColor.YELLOW).append("Jaring menangkap ").append(caught).append(" ayam");
+            if (goldenCaught > 0) sb.append(ChatColor.GOLD).append(" (golden ").append(goldenCaught).append(")");
+            if (blackCaught > 0) sb.append(ChatColor.DARK_GRAY).append(" (hitam ").append(blackCaught).append(")");
+            sb.append(ChatColor.WHITE).append(" | Poin: ").append(pointsDelta >= 0 ? ChatColor.GREEN + "+" : ChatColor.RED.toString()).append(pointsDelta);
+            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new ComponentBuilder(sb.toString()).create());
+            if (goldenCaught > 0) playGoldenCatchEffects(player, center.clone().add(0, 0.5, 0));
+            if (blackCaught > 0) {
+                int slowSec = plugin.getConfig().getInt("game-settings.black-chicken.slowness-seconds", 3);
+                if (slowSec > 0) player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, slowSec * 20, 0, true, true, true));
+                playBlackCatchEffects(player, center.clone().add(0, 0.5, 0));
+            }
+            game.checkSpeedBoost(player);
+        }
+        // Decrement durability; optionally auto-remove when timer expires handled elsewhere
+    }
+
+    // Freeze Trap: throw the special snowball; when it hits a player, apply slowness 5s
+    @EventHandler
+    public void onProjectileHit(ProjectileHitEvent event) {
+        if (!(event.getEntity() instanceof Snowball)) return;
+        if (!event.getEntity().hasMetadata("CH_FREEZE_TRAP")) return;
+        if (!(event.getEntity().getShooter() instanceof Player)) return;
+        Player shooter = (Player) event.getEntity().getShooter();
+        if (event.getHitEntity() instanceof Player) {
+            Player target = (Player) event.getHitEntity();
+            int seconds = plugin.getConfig().getInt("powerups.freeze-trap.seconds", 5);
+            target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, seconds * 20, 0, true, true, true));
+            target.sendMessage(ChatColor.BLUE + "Kena Freeze Trap! Slowness " + seconds + " detik.");
+            shooter.sendMessage(ChatColor.BLUE + "Berhasil membekukan " + target.getName() + "!");
+            shooter.playSound(shooter.getLocation(), Sound.BLOCK_GLASS_BREAK, 1.0f, 1.5f);
+        }
+    }
+
+    // Mark freeze trap projectiles when launched
+    @EventHandler
+    public void onProjectileLaunch(ProjectileLaunchEvent event) {
+        if (!(event.getEntity() instanceof Snowball)) return;
+        if (!(event.getEntity().getShooter() instanceof Player)) return;
+        Player shooter = (Player) event.getEntity().getShooter();
+        ItemStack inHand = shooter.getInventory().getItemInMainHand();
+        if (plugin.getItemManager().isFreezeTrap(inHand)) {
+            event.getEntity().setMetadata("CH_FREEZE_TRAP", new FixedMetadataValue(plugin, true));
+            // consume one snowball on launch to avoid dupes if cancelled earlier
+            int amt = inHand.getAmount();
+            if (amt <= 1) shooter.getInventory().setItemInMainHand(null);
+            else { inHand.setAmount(amt - 1); shooter.getInventory().setItemInMainHand(inHand); }
+        }
     }
 
     @EventHandler

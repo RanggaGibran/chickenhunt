@@ -198,6 +198,25 @@ game-settings:
     # Efek slowness pada pemain dalam detik
     slowness-seconds: 3
 
+  # Power-Up Settings
+  powerups:
+    drop-chance: 0.15 # Peluang mendapatkan power-up setiap menangkap ayam
+    weights:
+      speed-potion: 0.5
+      net-rod: 0.3
+      freeze-trap: 0.2
+    speed-potion:
+      name: "&bSpeed Boost II (10s)"
+      seconds: 10
+    net-rod:
+      name: "&eJaring Besar"
+      radius: 3.0
+      # durasi (detik) sebelum fishing rod hilang otomatis saat dipegang
+      duration-seconds: 20
+    freeze-trap:
+      name: "&bFreeze Trap"
+      seconds: 5
+
 # Item Kepala Ayam
 chicken-head-item:
   material: "PLAYER_HEAD"

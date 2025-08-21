@@ -5,6 +5,7 @@ import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+// import org.bukkit.inventory.meta.PotionMeta; // Avoid deprecated potion API usage
 import org.bukkit.profile.PlayerProfile;
 import org.bukkit.profile.PlayerTextures;
 
@@ -64,7 +65,6 @@ public class ItemManager {
                 }
             }
             
-            meta.setLocalizedName("chickenhunt.special_head");
             headItem.setItemMeta(meta);
         }
         return headItem;
@@ -101,7 +101,6 @@ public class ItemManager {
                 plugin.getLogger().warning("Invalid golden chicken head texture URL: " + e.getMessage());
             }
             
-            meta.setLocalizedName("chickenhunt.golden_head");
             headItem.setItemMeta(meta);
         }
         return headItem;
@@ -140,6 +139,64 @@ public class ItemManager {
             return false;
         }
         ItemMeta meta = item.getItemMeta();
-        return meta != null && meta.hasLocalizedName() && meta.getLocalizedName().equals("chickenhunt.golden_head");
+        String name = ChatColor.translateAlternateColorCodes('&', "&eKepala Ayam Emas");
+        return meta != null && meta.hasDisplayName() && name.equals(meta.getDisplayName());
+    }
+
+    // ===== Power-up items =====
+    public ItemStack createSpeedBoostPotion() {
+        ItemStack potion = new ItemStack(Material.POTION, 1);
+        ItemMeta meta = potion.getItemMeta();
+        if (meta != null) {
+            String name = ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("powerups.speed-potion.name", "&bSpeed Boost II (10s)"));
+            meta.setDisplayName(name);
+            potion.setItemMeta(meta);
+        }
+        return potion;
+    }
+
+    public boolean isSpeedBoostPotion(ItemStack item) {
+        if (item == null || item.getType() != Material.POTION || !item.hasItemMeta()) return false;
+        ItemMeta meta = item.getItemMeta();
+        String name = ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("powerups.speed-potion.name", "&bSpeed Boost II (10s)"));
+        return meta != null && meta.hasDisplayName() && meta.getDisplayName().equals(name);
+    }
+
+    public ItemStack createNetRod() {
+        Material mat = Material.FISHING_ROD;
+        ItemStack rod = new ItemStack(mat, 1);
+        ItemMeta meta = rod.getItemMeta();
+        if (meta != null) {
+            String name = ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("powerups.net-rod.name", "&eJaring Besar"));
+            meta.setDisplayName(name);
+            rod.setItemMeta(meta);
+        }
+        return rod;
+    }
+
+    public boolean isNetRod(ItemStack item) {
+        if (item == null || item.getType() != Material.FISHING_ROD || !item.hasItemMeta()) return false;
+        ItemMeta meta = item.getItemMeta();
+        String name = ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("powerups.net-rod.name", "&eJaring Besar"));
+        return meta != null && meta.hasDisplayName() && meta.getDisplayName().equals(name);
+    }
+
+    public ItemStack createFreezeTrap() {
+        // Use SNOWBALL by default; configurable via material? Keep simple for now
+        ItemStack ball = new ItemStack(Material.SNOWBALL, 1);
+        ItemMeta meta = ball.getItemMeta();
+        if (meta != null) {
+            String name = ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("powerups.freeze-trap.name", "&bFreeze Trap"));
+            meta.setDisplayName(name);
+            ball.setItemMeta(meta);
+        }
+        return ball;
+    }
+
+    public boolean isFreezeTrap(ItemStack item) {
+        if (item == null || item.getType() != Material.SNOWBALL || !item.hasItemMeta()) return false;
+        ItemMeta meta = item.getItemMeta();
+        String name = ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("powerups.freeze-trap.name", "&bFreeze Trap"));
+        return meta != null && meta.hasDisplayName() && meta.getDisplayName().equals(name);
     }
 }
