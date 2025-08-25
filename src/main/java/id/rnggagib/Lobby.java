@@ -25,10 +25,9 @@ public class Lobby {
     private int countdown = 60;
     private boolean canForceStart = false;
     
-    private static final int MIN_PLAYERS = 3;
+    private static final int MIN_PLAYERS = 2;
     private static final int MAX_PLAYERS = 20;
     private static final int COUNTDOWN_TIME = 60;
-    private static final int FORCE_START_DELAY = 5;
     
     public enum LobbyState {
         WAITING,
@@ -145,17 +144,11 @@ public class Lobby {
         state = LobbyState.COUNTDOWN;
         countdown = COUNTDOWN_TIME;
         
-        broadcastMessage(ChatColor.YELLOW + "Countdown dimulai! Game akan dimulai dalam " + countdown + " detik!");
-        broadcastMessage(ChatColor.GRAY + "Ketik /ch forcestart untuk memulai game lebih cepat (tersedia dalam " + FORCE_START_DELAY + " detik)");
+    broadcastMessage(ChatColor.YELLOW + "Countdown dimulai! Game akan dimulai dalam " + countdown + " detik!");
+    broadcastMessage(ChatColor.GRAY + "Ketik /ch forcestart untuk memulai game sekarang.");
         
-        // Start force start timer
-        forceStartTask = new BukkitRunnable() {
-            @Override
-            public void run() {
-                canForceStart = true;
-                broadcastMessage(ChatColor.GREEN + "Force start sekarang tersedia! Ketik /ch forcestart untuk memulai game sekarang!");
-            }
-        }.runTaskLater(plugin, FORCE_START_DELAY * 20L);
+    // Force start available immediately
+    canForceStart = true;
         
         // Start countdown timer
         countdownTask = new BukkitRunnable() {

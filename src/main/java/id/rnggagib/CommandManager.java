@@ -41,6 +41,11 @@ public class CommandManager implements CommandExecutor, TabCompleter {
         WAND_ITEM_NAME = ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("wand-item.name", "&6ChickenHunt Wand"));
     }
 
+    // Called when /ch reload or plugin.reloadPluginConfig() runs
+    public void reloadFromConfig() {
+        loadWandDetails();
+    }
+
     private String getMsg(String key, Map<String, String> placeholders) {
         return plugin.getMessage(key, placeholders);
     }
@@ -219,12 +224,8 @@ public class CommandManager implements CommandExecutor, TabCompleter {
             sender.sendMessage(getMsg("no_permission", null));
             return true;
         }
-        plugin.reloadConfig();
-        // Pastikan GameManager juga di-reset atau konfigurasinya di-refresh jika perlu
-        // Untuk saat ini, reload config utama dan region sudah cukup.
-        // Jika GameManager memiliki konfigurasi sendiri yang dimuat dari config, itu juga perlu di-refresh.
-        plugin.getRegionManager().loadRegions(); 
-        loadWandDetails(); 
+    // Use centralized reload to refresh prefix, regions, wand, and scheduler
+    plugin.reloadPluginConfig();
         sender.sendMessage(getMsg("plugin_reloaded", null));
         return true;
     }
@@ -825,12 +826,8 @@ public class CommandManager implements CommandExecutor, TabCompleter {
             return true;
         }
         
-        if (!lobby.canForceStart()) {
-            player.sendMessage(ChatColor.RED + "Force start tidak tersedia! Tunggu 5 detik setelah countdown dimulai.");
-            return true;
-        }
-        
-        lobby.forceStart();
+    // Start immediately regardless of previous delay requirement
+    lobby.forceStart();
         return true;
     }
     

@@ -18,6 +18,8 @@ public class ChickenHunt extends JavaPlugin {
   private PlayerStatsManager playerStatsManager;
   private ScoreboardHandler scoreboardHandler;
   private LobbyManager lobbyManager;
+  private CommandManager commandManager;
+  private WandListener wandListener;
   private final Map<UUID, Location> playerSelectionsPos1 = new HashMap<>();
   private final Map<UUID, Location> playerSelectionsPos2 = new HashMap<>();
   private String prefix;
@@ -41,11 +43,12 @@ public class ChickenHunt extends JavaPlugin {
         // Vault not found, economy features won't work
     }
 
-    CommandManager commandManager = new CommandManager(this);
-    this.getCommand("ch").setExecutor(commandManager);
-    this.getCommand("ch").setTabCompleter(commandManager);
+  this.commandManager = new CommandManager(this);
+  this.getCommand("ch").setExecutor(this.commandManager);
+  this.getCommand("ch").setTabCompleter(this.commandManager);
 
-    getServer().getPluginManager().registerEvents(new WandListener(this), this);
+  this.wandListener = new WandListener(this);
+  getServer().getPluginManager().registerEvents(this.wandListener, this);
     getServer().getPluginManager().registerEvents(new GameListener(this), this);
     getServer().getPluginManager().registerEvents(new RegionListener(this), this);
     getServer().getPluginManager().registerEvents(new LobbyListener(this), this);
@@ -62,6 +65,37 @@ public class ChickenHunt extends JavaPlugin {
     if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
         this.placeholderExpansion = new ChickenHuntExpansion(this);
         this.placeholderExpansion.register();
+    }
+  }
+
+  /**
+   * Reload config and refresh components that cache configuration values.
+   */
+  public void reloadPluginConfig() {
+    // Reload main config file
+    reloadConfig();
+    // Refresh prefix from config
+    this.prefix = ChatColor.translateAlternateColorCodes('&', getConfig().getString("messages.prefix", "&e[ChickenHunt] &r"));
+    // Reload regions from disk
+    if (this.regionManager != null) {
+      this.regionManager.loadRegions();
+    }
+    // Refresh wand details in CommandManager and WandListener
+    if (this.commandManager != null) {
+      this.commandManager.reloadFromConfig();
+    }
+    if (this.wandListener != null) {
+      this.wandListener.reloadFromConfig();
+    }
+    // Restart scheduler according to new config
+    if (this.gameScheduler != null) {
+      this.gameScheduler.stop();
+    }
+    if (getConfig().getBoolean("auto-scheduler.enabled", false)) {
+      if (this.gameScheduler == null) {
+        this.gameScheduler = new GameScheduler(this);
+      }
+      this.gameScheduler.start();
     }
   }
 

@@ -30,6 +30,11 @@ public class WandListener implements Listener {
         WAND_MATERIAL = Material.getMaterial(plugin.getConfig().getString("wand-item.material", "BLAZE_ROD"));
         WAND_ITEM_NAME = ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("wand-item.name", "&6ChickenHunt Wand"));
     }
+
+    // Expose reloader for config changes
+    public void reloadFromConfig() {
+        loadWandDetails();
+    }
     
     private String getMsg(String key, Map<String, String> placeholders) {
         return plugin.getMessage(key, placeholders);

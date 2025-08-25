@@ -84,11 +84,12 @@ public class GameListener implements Listener {
             
             // Set cooldown timestamp
             playerCooldowns.put(playerId, currentTime);
-            
-            gameInstance.removeChicken(chicken);
 
+            // IMPORTANT: detect type BEFORE removing from active set
             boolean isGolden = gameInstance.isGoldenChicken(chicken);
             boolean isBlack = gameInstance.isBlackChicken(chicken);
+
+            gameInstance.removeChicken(chicken);
             String message;
             int pointsEarned;
 
@@ -315,13 +316,14 @@ public class GameListener implements Listener {
         int basePoints = plugin.getConfig().getInt("game-settings.points-per-catch", 1);
         int goldenExtra = plugin.getConfig().getInt("game-settings.golden-chicken.extra-points", 5);
         int blackPenalty = plugin.getConfig().getInt("game-settings.black-chicken.penalty-points", 2);
-        for (Entity e : center.getWorld().getNearbyEntities(center, radius, radius, radius)) {
+    for (Entity e : center.getWorld().getNearbyEntities(center, radius, radius, radius)) {
             if (e instanceof Chicken) {
                 Chicken ch = (Chicken) e;
                 if (game.isGameChicken(ch)) {
-                    game.removeChicken(ch);
-                    boolean isGolden = game.isGoldenChicken(ch);
-                    boolean isBlack = game.isBlackChicken(ch);
+            // Detect type BEFORE removing from active set
+            boolean isGolden = game.isGoldenChicken(ch);
+            boolean isBlack = game.isBlackChicken(ch);
+            game.removeChicken(ch);
                     if (isGolden) {
                         pointsDelta += basePoints + goldenExtra;
                         goldenCaught++;
